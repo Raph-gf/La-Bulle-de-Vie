@@ -6,39 +6,39 @@ import Reveal from "@/components/animations/Reveal"
 const services = [
   {
     num: "01", cat: "massage", label: "Signature",
-    name: "Massage Bulle", duration: "60 min", detail: "Corps entier",
-    price: "90€", bg: "#2C1F14",
-    desc: "Notre soin signature — une fusion de techniques suédoises et californiennes pour relâcher les tensions et retrouver un équilibre profond.",
+    name: "Soin du corps", duration: "60 min", detail: "Corps entier",
+    price: "105€", bg: "#2C1F14", id: "corps",
+    desc: "Notre soin signature — un massage complet aux huiles tièdes, en gestes lents et profonds pour relâcher tout ce que le quotidien a laissé s'installer.",
   },
   {
-    num: "02", cat: "massage", label: "Détente",
-    name: "Massage Californien", duration: "75 min", detail: "Enveloppant",
-    price: "105€", bg: "#3D2B1A",
-    desc: "Des effleurages lents et enveloppants qui invitent à un lâcher-prise total. Idéal pour les premières séances ou les moments de grande fatigue émotionnelle.",
+    num: "02", cat: "massage", label: "Éclat",
+    name: "Soin visage", duration: "30 min", detail: "Modelage facial",
+    price: "45€", bg: "#3D2B1A", id: "visage",
+    desc: "Trente minutes pour redonner souffle et lumière à votre peau — nettoyage doux, modelage facial et masque sur‑mesure.",
   },
   {
     num: "03", cat: "massage", label: "Tonique",
-    name: "Massage Suédois", duration: "50 min", detail: "Dos & épaules",
-    price: "75€", bg: "#4A3530",
-    desc: "Un massage tonique ciblé sur les zones de tension chroniques : nuque, épaules, lombaires. Parfait pour les personnes actives.",
+    name: "Soin sel de mer", duration: "60 min", detail: "Gommage & modelage",
+    price: "75€", bg: "#4A3530", id: "sel",
+    desc: "Un soin tonique en deux temps : gommage minéral au sel marin pour réveiller la peau, puis modelage drainant aux huiles légères.",
   },
   {
     num: "04", cat: "energetique", label: "Énergétique",
-    name: "Soin Lithothérapie", duration: "75 min", detail: "Pierres chaudes",
-    price: "110€", bg: "#5C4033",
-    desc: "Des pierres volcaniques chauffées placées sur les méridiens énergétiques pour libérer les blocages et rééquilibrer le flux vital.",
+    name: "Soin galet chaud", duration: "30 min", detail: "Pierres chaudes",
+    price: "55€", bg: "#5C4033", id: "galet",
+    desc: "Des galets volcaniques tièdes posés sur les points d'énergie du dos. Trente minutes qui agissent en profondeur.",
   },
   {
-    num: "05", cat: "energetique", label: "Sonore",
-    name: "Bain Sonore", duration: "45 min", detail: "Bols tibétains",
-    price: "65€", bg: "#3A2A22",
-    desc: "Les vibrations des bols tibétains pénètrent chaque cellule et induisent un état méditatif profond. Une expérience unique de régénération.",
+    num: "05", cat: "massage", label: "Douceur",
+    name: "Soin des mains", duration: "30 min", detail: "Mains & poignets",
+    price: "35€", bg: "#3A2A22", id: "mains",
+    desc: "Bain tiède, gommage doux, massage profond des paumes et hydratation nourrissante — les mains méritent qu'on s'y attarde.",
   },
   {
-    num: "06", cat: "creation", label: "Atelier",
-    name: "Bougies sur mesure", duration: "2h", detail: "Groupe · 6 pers. max",
-    price: "45€", bg: "#2E1E18",
-    desc: "Créez vos propres bougies parfumées en cire naturelle. Choisissez vos senteurs, vos colorants, et repartez avec vos créations.",
+    num: "06", cat: "energetique", label: "Drainage",
+    name: "Soin jambes légères", duration: "30 min", detail: "Drainage & circulation",
+    price: "85€", bg: "#2E1E18", id: "jambes",
+    desc: "Pressions remontantes, drainage doux et huiles fraîches pour soulager les jambes lourdes et retrouver la légèreté.",
   },
 ]
 
@@ -103,8 +103,8 @@ export default function PrestationsPage() {
                     </div>
                     <h3>{s.name}</h3>
                     <p className="card-desc">{s.desc}</p>
-                    <Link className="btn" href="/booking" style={{ width: "100%", justifyContent: "center" }}>
-                      Réserver <span className="arrow">→</span>
+                    <Link className="btn" href={`/soins/${s.id}`} style={{ width: "100%", justifyContent: "center" }}>
+                      Découvrir <span className="arrow">→</span>
                     </Link>
                   </div>
                 </div>

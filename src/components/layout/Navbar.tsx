@@ -15,7 +15,12 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
-  const isHome = pathname === "/"
+  // Pages whose hero is dark — nav links should be white when unscrolled
+  const darkHero =
+    pathname === "/" ||
+    pathname === "/prestations" ||
+    pathname === "/decorations" ||
+    pathname.startsWith("/soins")
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
@@ -24,7 +29,7 @@ export default function Navbar() {
   }, [])
 
   return (
-    <nav className={`nav ${isHome ? "on-dark" : ""} ${scrolled ? "scrolled" : ""}`} id="nav">
+    <nav className={`nav ${darkHero ? "on-dark" : ""} ${scrolled ? "scrolled" : ""}`} id="nav">
       <div className="wrap nav-inner">
         <Link className="logo" href="/">
           <span className="logo-dot" />
