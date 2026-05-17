@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single()
+    .single<{ role: string }>()
 
   if (profile?.role !== "specialist") redirect("/")
 
