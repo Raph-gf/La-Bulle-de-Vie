@@ -31,6 +31,7 @@ export default function RootLayout({
     <html
       lang="fr"
       className={`${cormorant.variable} ${manrope.variable}`}
+      data-scroll-behavior="smooth"
     >
       <body>{children}</body>
     </html>
