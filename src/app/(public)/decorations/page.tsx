@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import Link from "next/link"
+import Reveal from "@/components/animations/Reveal"
 
 const products = [
   {
@@ -59,46 +60,50 @@ export default function DecorationsPage() {
       {/* PAGE HEADER */}
       <section className="page-hero">
         <div className="wrap">
-          <span className="eyebrow reveal">Créations décoratives</span>
-          <h1 className="reveal reveal-d1">L&apos;âme de la bulle <span className="italic">dans votre maison.</span></h1>
-          <p className="lede reveal reveal-d2">Bougies artisanales, compositions florales séchées, brumes d&apos;ambiance — des pièces pensées pour habiller votre intérieur d&apos;une énergie douce.</p>
+          <Reveal><span className="eyebrow">Créations décoratives</span></Reveal>
+          <Reveal delay={0.1}><h1>L&apos;âme de la bulle <span className="italic">dans votre maison.</span></h1></Reveal>
+          <Reveal delay={0.2}><p className="lede">Bougies artisanales, compositions florales séchées, brumes d&apos;ambiance — des pièces pensées pour habiller votre intérieur d&apos;une énergie douce.</p></Reveal>
         </div>
       </section>
 
       {/* CATALOG */}
       <section style={{ padding: "80px 0 120px" }}>
         <div className="wrap">
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} className="reveal">
-            {cats.map(c => (
-              <button
-                key={c.key}
-                className={`filter-btn ${cat === c.key ? "active" : ""}`}
-                onClick={() => setCat(c.key)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          <Reveal>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {cats.map(c => (
+                <button
+                  key={c.key}
+                  className={`filter-btn ${cat === c.key ? "active" : ""}`}
+                  onClick={() => setCat(c.key)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </Reveal>
 
           <div className="catalog-grid">
             {visible.map((p, i) => (
-              <div key={p.num} className={`catalog-card reveal ${i % 3 === 1 ? "reveal-d1" : i % 3 === 2 ? "reveal-d2" : ""}`}>
-                <div style={{ background: p.bg, aspectRatio: "4/3" }} />
-                <div className="card-body">
-                  <div className="card-foot">
-                    <div className="card-meta">
-                      <span className="pill muted">{p.label}</span>
+              <Reveal key={p.num} delay={(i % 3) * 0.1}>
+                <div className="catalog-card">
+                  <div style={{ background: p.bg, aspectRatio: "4/3" }} />
+                  <div className="card-body">
+                    <div className="card-foot">
+                      <div className="card-meta">
+                        <span className="pill muted">{p.label}</span>
+                      </div>
+                      <div className="card-price">{p.price}</div>
                     </div>
-                    <div className="card-price">{p.price}</div>
+                    <h3>{p.name}</h3>
+                    <p style={{ fontSize: 12, letterSpacing: ".04em", color: "var(--mute)", marginBottom: 6 }}>{p.sub}</p>
+                    <p className="card-desc">{p.desc}</p>
+                    <a className="btn" href="mailto:contact@labulledevie.fr" style={{ width: "100%", justifyContent: "center", display: "flex" }}>
+                      Commander <span className="arrow">→</span>
+                    </a>
                   </div>
-                  <h3>{p.name}</h3>
-                  <p style={{ fontSize: 12, letterSpacing: ".04em", color: "var(--mute)", marginBottom: 6 }}>{p.sub}</p>
-                  <p className="card-desc">{p.desc}</p>
-                  <a className="btn" href="mailto:contact@labulledevie.fr" style={{ width: "100%", justifyContent: "center", display: "flex" }}>
-                    Commander <span className="arrow">→</span>
-                  </a>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -108,7 +113,7 @@ export default function DecorationsPage() {
       <section style={{ padding: "80px 0", background: "var(--cream)" }}>
         <div className="wrap">
           <div className="passion-grid">
-            <div className="passion-copy reveal">
+            <Reveal className="passion-copy">
               <span className="eyebrow">Création sur mesure</span>
               <h2 style={{ marginTop: 18 }}>Une pièce <span className="italic">imaginée pour vous.</span></h2>
               <p>Vous avez une idée précise — une occasion spéciale, un intérieur particulier, une personne à qui offrir quelque chose d&apos;unique ? Je crée des pièces entièrement personnalisées sur commande.</p>
@@ -118,14 +123,14 @@ export default function DecorationsPage() {
                 <a className="btn primary" href="mailto:contact@labulledevie.fr">Demander un devis <span className="arrow">→</span></a>
                 <a className="btn" href="tel:0625486056">06 25 48 60 56</a>
               </div>
-            </div>
-            <div className="passion-media reveal reveal-d2">
+            </Reveal>
+            <Reveal delay={0.15} className="passion-media">
               <div className="frame" style={{ background: "#3D2B1A", aspectRatio: "3/4", borderRadius: 20 }} />
               <div className="name-tag">
                 <div className="n">Pièce unique</div>
                 <div className="r">Créée avec soin · Livraison possible</div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -133,7 +138,7 @@ export default function DecorationsPage() {
       {/* CTA */}
       <section className="cta">
         <div className="quote-bulle" style={{ width: 130, height: 130, top: -20, right: "10%" }} />
-        <div className="wrap reveal">
+        <Reveal className="wrap">
           <span className="eyebrow">Offrir la bulle</span>
           <h2 style={{ marginTop: 18 }}>Un cadeau <span className="italic">qui touche vraiment.</span></h2>
           <p>Offrez un bon cadeau — soin massage ou coffret déco — à vos proches. Disponible en ligne ou à retirer sur place.</p>
@@ -141,7 +146,7 @@ export default function DecorationsPage() {
             <Link className="btn primary" href="/booking">Bon cadeau massage <span className="arrow">→</span></Link>
             <a className="btn" href="mailto:contact@labulledevie.fr">Coffret déco</a>
           </div>
-        </div>
+        </Reveal>
       </section>
     </>
   )

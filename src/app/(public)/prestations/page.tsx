@@ -1,13 +1,14 @@
 "use client"
 import { useState } from "react"
 import Link from "next/link"
+import Reveal from "@/components/animations/Reveal"
 
 const services = [
   {
     num: "01", cat: "massage", label: "Signature",
     name: "Massage Bulle", duration: "60 min", detail: "Corps entier",
     price: "90€", bg: "#2C1F14",
-    desc: "Notre soin signature — une fusion de techniques suédoises et californien­nes pour relâcher les tensions et retrouver un équilibre profond.",
+    desc: "Notre soin signature — une fusion de techniques suédoises et californiennes pour relâcher les tensions et retrouver un équilibre profond.",
   },
   {
     num: "02", cat: "massage", label: "Détente",
@@ -64,48 +65,50 @@ export default function PrestationsPage() {
       {/* PAGE HEADER */}
       <section className="page-hero">
         <div className="wrap">
-          <span className="eyebrow reveal">Nos prestations</span>
-          <h1 className="reveal reveal-d1">Des soins pensés <span className="italic">comme une parenthèse.</span></h1>
-          <p className="lede reveal reveal-d2">Sept rituels uniques pour le corps, l&apos;énergie et la créativité — à choisir selon votre intention du moment.</p>
+          <Reveal><span className="eyebrow">Nos prestations</span></Reveal>
+          <Reveal delay={0.1}><h1>Des soins pensés <span className="italic">comme une parenthèse.</span></h1></Reveal>
+          <Reveal delay={0.2}><p className="lede">Sept rituels uniques pour le corps, l&apos;énergie et la créativité — à choisir selon votre intention du moment.</p></Reveal>
         </div>
       </section>
 
       {/* CATALOG */}
       <section style={{ padding: "80px 0 120px" }}>
         <div className="wrap">
-          {/* Filters */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 0 }} className="reveal">
-            {cats.map(c => (
-              <button
-                key={c.key}
-                className={`filter-btn ${cat === c.key ? "active" : ""}`}
-                onClick={() => setCat(c.key)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          <Reveal>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {cats.map(c => (
+                <button
+                  key={c.key}
+                  className={`filter-btn ${cat === c.key ? "active" : ""}`}
+                  onClick={() => setCat(c.key)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </Reveal>
 
-          {/* Grid */}
           <div className="catalog-grid">
             {visible.map((s, i) => (
-              <div key={s.num} className={`catalog-card reveal ${i % 3 === 1 ? "reveal-d1" : i % 3 === 2 ? "reveal-d2" : ""}`}>
-                <div style={{ background: s.bg, aspectRatio: "16/9" }} />
-                <div className="card-body">
-                  <div className="card-foot">
-                    <div className="card-meta">
-                      <span className="pill muted">{s.label}</span>
-                      <span className="pill muted">{s.duration}</span>
+              <Reveal key={s.num} delay={(i % 3) * 0.1}>
+                <div className="catalog-card">
+                  <div style={{ background: s.bg, aspectRatio: "16/9" }} />
+                  <div className="card-body">
+                    <div className="card-foot">
+                      <div className="card-meta">
+                        <span className="pill muted">{s.label}</span>
+                        <span className="pill muted">{s.duration}</span>
+                      </div>
+                      <div className="card-price">{s.price}</div>
                     </div>
-                    <div className="card-price">{s.price}</div>
+                    <h3>{s.name}</h3>
+                    <p className="card-desc">{s.desc}</p>
+                    <Link className="btn" href="/booking" style={{ width: "100%", justifyContent: "center" }}>
+                      Réserver <span className="arrow">→</span>
+                    </Link>
                   </div>
-                  <h3>{s.name}</h3>
-                  <p className="card-desc">{s.desc}</p>
-                  <Link className="btn" href="/booking" style={{ width: "100%", justifyContent: "center" }}>
-                    Réserver <span className="arrow">→</span>
-                  </Link>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -114,20 +117,20 @@ export default function PrestationsPage() {
       {/* DEROULEMENT */}
       <section className="deroulement">
         <div className="wrap">
-          <div className="section-head reveal">
+          <Reveal className="section-head">
             <div>
               <span className="eyebrow">Le déroulé</span>
               <h2 style={{ marginTop: 18 }}>Comment se passe <span className="italic">votre séance ?</span></h2>
             </div>
             <p className="lede">De votre arrivée à votre départ, chaque instant est pensé pour vous mettre à l&apos;aise et maximiser les bienfaits.</p>
-          </div>
+          </Reveal>
           <div className="steps">
             {steps.map((s, i) => (
-              <div key={s.num} className={`step reveal ${i > 0 ? `reveal-d${i}` : ""}`}>
+              <Reveal key={s.num} delay={i * 0.1} className="step">
                 <div className="step-num">{s.num}</div>
                 <h3>{s.title}</h3>
                 <p>{s.body}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -137,7 +140,7 @@ export default function PrestationsPage() {
       <section className="cta">
         <div className="quote-bulle" style={{ width: 140, height: 140, top: -20, left: "8%" }} />
         <div className="quote-bulle" style={{ width: 90, height: 90, bottom: -10, right: "12%" }} />
-        <div className="wrap reveal">
+        <Reveal className="wrap">
           <span className="eyebrow">Première séance</span>
           <h2 style={{ marginTop: 18 }}>Prêt·e à entrer <span className="italic">dans la bulle ?</span></h2>
           <p>Réservez votre premier soin en ligne — 20% offert sur votre soin Bulle signature.</p>
@@ -145,7 +148,7 @@ export default function PrestationsPage() {
             <Link className="btn primary" href="/booking">Réserver maintenant <span className="arrow">→</span></Link>
             <a className="btn" href="tel:0625486056">06 25 48 60 56</a>
           </div>
-        </div>
+        </Reveal>
       </section>
     </>
   )

@@ -129,14 +129,7 @@ p{line-height:1.65; color:var(--ink-soft)}
 .btn.full{justify-content:center; width:100%}
 
 /* ── Reveal animation utility ─────────────────────────────────── */
-.reveal{opacity:0; transform: translateY(28px); transition: opacity .9s ease, transform .9s cubic-bezier(.2,.7,.2,1)}
-.reveal.in{opacity:1; transform:none}
-.reveal-d1{transition-delay:.08s}
-.reveal-d2{transition-delay:.16s}
-.reveal-d3{transition-delay:.24s}
-.reveal-d4{transition-delay:.32s}
-.reveal-d5{transition-delay:.40s}
-.reveal-d6{transition-delay:.48s}
+/* reveal animations handled by Motion (Reveal.tsx) */
 
 /* ── Hero (full landing variant) ──────────────────────────────── */
 .hero{
@@ -635,8 +628,6 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
   .nav-links.nav-open{display:flex}
 }
 
-/* ── Reveal: also support .revealed (used by ScrollReveal component) */
-.reveal.revealed{opacity:1; transform:none}
 
 /* ── Catalog / filter shared classes ─────────────────────────────── */
 .filter-btn{
