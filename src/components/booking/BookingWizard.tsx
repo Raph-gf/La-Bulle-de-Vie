@@ -127,6 +127,27 @@ export default function BookingWizard({ serviceId }: Props) {
                 <button className="btn" onClick={() => window.print()}>Imprimer la confirmation</button>
               </div>
             </div>
+
+            {/* Guest account CTA */}
+            <div style={{
+              marginTop: 32,
+              background: "var(--cream)",
+              border: "1px solid var(--line)",
+              borderRadius: 16,
+              padding: "32px 36px",
+              textAlign: "center",
+            }}>
+              <p style={{ fontFamily: "var(--serif)", fontSize: "1.25rem", margin: "0 0 8px" }}>
+                Gérez vos rendez-vous <span className="italic">en un clic.</span>
+              </p>
+              <p style={{ color: "var(--mute)", fontSize: "0.9rem", margin: "0 0 24px" }}>
+                Créez un compte pour consulter vos réservations, annuler facilement et retrouver vos factures — sans jamais ressaisir vos informations.
+              </p>
+              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                <Link href="/register" className="btn primary">Créer un compte gratuit <span className="arrow">→</span></Link>
+                <Link href="/login" className="btn" style={{ opacity: 0.7 }}>J'ai déjà un compte</Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>

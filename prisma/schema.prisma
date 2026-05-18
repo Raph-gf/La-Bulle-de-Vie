@@ -104,7 +104,8 @@ model AvailabilitySlot {
 
 model Appointment {
   id                    String            @id @default(uuid())
-  clientId              String
+  /// Null for guest bookings — use guestEmail to identify the client
+  clientId              String?
   serviceId             String
   /// One-to-one link to the slot — booking a slot marks it as taken
   slotId                String            @unique
@@ -113,12 +114,16 @@ model Appointment {
   isFirstVisit          Boolean           @default(false)
   /// "cabinet" | "domicile"
   location              String
+  /// Guest fields — populated when clientId is null
+  guestName             String?
+  guestEmail            String?
+  guestPhone            String?
   stripePaymentIntentId String?
   refundStatus          RefundStatus      @default(none)
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
-  client  Profile          @relation(fields: [clientId], references: [id])
+  client  Profile?         @relation(fields: [clientId], references: [id])
   service Service          @relation(fields: [serviceId], references: [id])
   slot    AvailabilitySlot @relation(fields: [slotId], references: [id])
   review  Review?
@@ -172,7 +177,11 @@ model Product {
 
 model Order {
   id                    String      @id @default(uuid())
-  clientId              String
+  /// Null for guest orders
+  clientId              String?
+  /// Guest fields — populated when clientId is null
+  guestName             String?
+  guestEmail            String?
   status                OrderStatus @default(pending)
   /// Total in euro cents
   total                 Int
@@ -181,7 +190,7 @@ model Order {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  client Profile     @relation(fields: [clientId], references: [id])
+  client Profile?    @relation(fields: [clientId], references: [id])
   items  OrderItem[]
 
   @@map("orders")
