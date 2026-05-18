@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 // ── Zod schemas ─────────────────────────────────────────────────────
 const loginSchema = z.object({
@@ -463,8 +464,8 @@ export default function ConnexionPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [mode, setMode] = useState<Mode>("login")
-  const [showGoog, setShowGoog] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState("")
   const [successTitle, setSuccessTitle] = useState("")
   const [successText, setSuccessText] = useState("")
   const [showLoginPwd, setShowLoginPwd] = useState(false)
@@ -476,32 +477,18 @@ export default function ConnexionPage() {
     if (m === "register" || m === "forgot") setMode(m)
   }, [searchParams])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowGoog(false) }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
-
   function go(m: Mode) {
+    setAuthError("")
     setMode(m)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function fakeSubmit(title: string, text: string) {
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      setSuccessTitle(title)
-      setSuccessText(text)
-      go("success")
-    }, 1200)
-  }
-
-  function handleGoogPick(name: string, email: string) {
-    setShowGoog(false)
-    setTimeout(() => {
-      fakeSubmit(`Bonjour ${name.split(" ")[0]}.`, `Vous êtes connecté·e avec ${email}.`)
-    }, 350)
+  async function handleGoogleAuth() {
+    const supabase = createClient()
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
   }
 
   // ── Login form
@@ -509,9 +496,25 @@ export default function ConnexionPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", remember: true },
   })
-  function onLogin(data: LoginData) {
-    console.log("login", data)
-    fakeSubmit("Bon retour parmi nous.", "Vous voilà connecté·e à votre espace.")
+  async function onLogin(data: LoginData) {
+    setLoading(true)
+    setAuthError("")
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    })
+    if (error) {
+      setAuthError(
+        error.message === "Invalid login credentials"
+          ? "Email ou mot de passe incorrect."
+          : error.message
+      )
+      setLoading(false)
+      return
+    }
+    const redirectTo = searchParams.get("redirectTo") ?? "/compte"
+    router.push(redirectTo)
   }
 
   // ── Register form
@@ -519,16 +522,50 @@ export default function ConnexionPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: { prenom: "", nom: "", email: "", phone: "", password: "", cgu: undefined, newsletter: false },
   })
-  function onRegister(data: RegisterData) {
-    console.log("register", data)
-    fakeSubmit("Bienvenue dans la bulle.", "Votre espace est prêt. Votre cadeau de bienvenue (−20 %) vous attend dans votre profil.")
+  async function onRegister(data: RegisterData) {
+    setLoading(true)
+    setAuthError("")
+    const supabase = createClient()
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: { full_name: `${data.prenom} ${data.nom}`, phone: data.phone },
+      },
+    })
+    if (error) {
+      setAuthError(
+        error.message.toLowerCase().includes("already registered")
+          ? "Un compte existe déjà avec cet email."
+          : error.message
+      )
+      setLoading(false)
+      return
+    }
+    setLoading(false)
+    setSuccessTitle("Vérifiez vos mails.")
+    setSuccessText("Un lien de confirmation vient de partir. Cliquez dessus pour activer votre compte et accéder à votre espace.")
+    go("success")
   }
 
   // ── Forgot form
   const forgotForm = useForm<ForgotData>({ resolver: zodResolver(forgotSchema) })
-  function onForgot(data: ForgotData) {
-    console.log("forgot", data)
-    fakeSubmit("C'est parti.", "Un lien vient de partir vers votre adresse. Pensez à vérifier vos spams.")
+  async function onForgot(data: ForgotData) {
+    setLoading(true)
+    setAuthError("")
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/login`,
+    })
+    if (error) {
+      setAuthError(error.message)
+      setLoading(false)
+      return
+    }
+    setLoading(false)
+    setSuccessTitle("C'est parti.")
+    setSuccessText("Un lien vient de partir vers votre adresse. Pensez à vérifier vos spams.")
+    go("success")
   }
 
   const strength = passwordStrength(pwdValue)
@@ -593,7 +630,7 @@ export default function ConnexionPage() {
                 </p>
 
                 <TabPill mode="login" onSwitch={go} />
-                <GoogleButton label="Continuer avec Google" onClick={() => setShowGoog(true)} />
+                <GoogleButton label="Continuer avec Google" onClick={handleGoogleAuth} />
                 <OrSep />
 
                 <form onSubmit={loginForm.handleSubmit(onLogin)} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -657,7 +694,12 @@ export default function ConnexionPage() {
                     </button>
                   </div>
 
-                  <div style={{ marginTop: 16 }}>
+                  {authError && (
+                    <p style={{ fontSize: 13, color: "#C95555", background: "#C9555510", border: "1px solid #C9555530", borderRadius: 8, padding: "10px 14px" }}>
+                      {authError}
+                    </p>
+                  )}
+                  <div style={{ marginTop: 8 }}>
                     <SubmitBtn label="Se connecter" loading={loading} />
                   </div>
                 </form>
@@ -684,7 +726,7 @@ export default function ConnexionPage() {
                 </p>
 
                 <TabPill mode="register" onSwitch={go} />
-                <GoogleButton label="S'inscrire avec Google" onClick={() => setShowGoog(true)} />
+                <GoogleButton label="S'inscrire avec Google" onClick={handleGoogleAuth} />
                 <OrSep />
 
                 <form onSubmit={registerForm.handleSubmit(onRegister)} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -796,6 +838,11 @@ export default function ConnexionPage() {
                     <span>Recevoir les nouvelles douces de la bulle (1 fois par mois, max).</span>
                   </label>
 
+                  {authError && (
+                    <p style={{ fontSize: 13, color: "#C95555", background: "#C9555510", border: "1px solid #C9555530", borderRadius: 8, padding: "10px 14px" }}>
+                      {authError}
+                    </p>
+                  )}
                   <div style={{ marginTop: 12 }}>
                     <SubmitBtn label="Créer mon compte" loading={loading} />
                   </div>
@@ -833,6 +880,11 @@ export default function ConnexionPage() {
                     </div>
                     {forgotForm.formState.errors.email && <p style={{ fontSize: 11.5, color: "#C95555", marginTop: 4, marginLeft: 4 }}>{forgotForm.formState.errors.email.message}</p>}
                   </div>
+                  {authError && (
+                    <p style={{ fontSize: 13, color: "#C95555", background: "#C9555510", border: "1px solid #C9555530", borderRadius: 8, padding: "10px 14px" }}>
+                      {authError}
+                    </p>
+                  )}
                   <div style={{ marginTop: 8 }}>
                     <SubmitBtn label="Envoyer le lien" loading={loading} />
                   </div>
@@ -884,7 +936,6 @@ export default function ConnexionPage() {
         </main>
       </div>
 
-      <GoogleModal show={showGoog} onClose={() => setShowGoog(false)} onPick={handleGoogPick} />
     </>
   )
 }
