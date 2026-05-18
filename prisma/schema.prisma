@@ -45,6 +45,11 @@ enum ServiceCategory {
   creation
 }
 
+enum DiscountType {
+  percent
+  fixed
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -62,12 +67,16 @@ model Profile {
   defaultShippingAddress Json?
   /// Private specialist notes about this client (dashboard only, never shown to client)
   specialistNotes        String?
+  /// Notification preferences — { rappel24h, rappel2h, sms, newsletter }
+  notificationPrefs      Json?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  appointments Appointment[]
-  orders       Order[]
-  reviews      Review[]
+  appointments  Appointment[]
+  orders        Order[]
+  reviews       Review[]
+  giftCardsBought GiftCard[] @relation("PurchasedBy")
+  giftCardsUsed   GiftCard[] @relation("RedeemedBy")
 
   @@map("profiles")
 }
@@ -126,13 +135,23 @@ model Appointment {
   guestPhone            String?
   stripePaymentIntentId String?
   refundStatus          RefundStatus      @default(none)
+  /// Discount applied — FK to discount_codes if a promo code was used
+  discountCodeId        String?
+  /// Gift card applied — FK to gift_cards if one was used
+  giftCardId            String?
+  /// Total discount applied in euro cents (welcome -20%, promo code, gift card)
+  discountAmount        Int               @default(0)
+  /// Actual amount charged via Stripe in euro cents (servicePrice - discountAmount)
+  amountPaid            Int?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
-  client  Profile?         @relation(fields: [clientId], references: [id])
-  service Service          @relation(fields: [serviceId], references: [id])
-  slot    AvailabilitySlot @relation(fields: [slotId], references: [id])
-  review  Review?
+  client       Profile?         @relation(fields: [clientId], references: [id])
+  service      Service          @relation(fields: [serviceId], references: [id])
+  slot         AvailabilitySlot @relation(fields: [slotId], references: [id])
+  discountCode DiscountCode?    @relation(fields: [discountCodeId], references: [id])
+  giftCard     GiftCard?        @relation(fields: [giftCardId], references: [id])
+  review       Review?
 
   @@map("appointments")
 }
@@ -193,11 +212,21 @@ model Order {
   total                 Int
   stripePaymentIntentId String?
   shippingAddress       Json?
+  /// Discount applied — FK to discount_codes if a promo code was used
+  discountCodeId        String?
+  /// Gift card applied — FK to gift_cards if one was used
+  giftCardId            String?
+  /// Total discount applied in euro cents
+  discountAmount        Int         @default(0)
+  /// Actual amount charged via Stripe in euro cents
+  amountPaid            Int?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  client Profile?    @relation(fields: [clientId], references: [id])
-  items  OrderItem[]
+  client       Profile?      @relation(fields: [clientId], references: [id])
+  items        OrderItem[]
+  discountCode DiscountCode? @relation(fields: [discountCodeId], references: [id])
+  giftCard     GiftCard?     @relation(fields: [giftCardId], references: [id])
 
   @@map("orders")
 }
@@ -215,4 +244,54 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
+}
+
+/// Specialist-created promo codes (e.g. WELCOME20, SUMMER10)
+model DiscountCode {
+  id                    String       @id @default(uuid())
+  /// Uppercase alphanumeric code, e.g. "WELCOME20"
+  code                  String       @unique
+  type                  DiscountType
+  /// percent: 0–100, fixed: amount in euro cents
+  value                 Int
+  /// null = unlimited uses
+  maxUses               Int?
+  usedCount             Int          @default(0)
+  /// Restrict to first booking only
+  firstBookingOnly      Boolean      @default(false)
+  /// Restrict to appointments only, orders only, or both (null = both)
+  appliesTo             String?
+  isActive              Boolean      @default(true)
+  expiresAt             DateTime?
+  createdAt             DateTime     @default(now())
+
+  appointments Appointment[]
+  orders       Order[]
+
+  @@map("discount_codes")
+}
+
+/// Gift cards — purchased by one client, redeemable by another (or same)
+model GiftCard {
+  id                    String    @id @default(uuid())
+  /// Uppercase code, e.g. "BDV-X4F7-2L9P"
+  code                  String    @unique
+  /// Original value in euro cents
+  initialBalance        Int
+  /// Remaining balance in euro cents (decremented on each use)
+  balance               Int
+  purchasedById         String?
+  redeemedById          String?
+  stripePaymentIntentId String?
+  isActive              Boolean   @default(true)
+  expiresAt             DateTime?
+  createdAt             DateTime  @default(now())
+  redeemedAt            DateTime?
+
+  purchasedBy  Profile?      @relation("PurchasedBy", fields: [purchasedById], references: [id])
+  redeemedBy   Profile?      @relation("RedeemedBy", fields: [redeemedById], references: [id])
+  appointments Appointment[]
+  orders       Order[]
+
+  @@map("gift_cards")
 }

@@ -156,6 +156,40 @@
 - ⬜ Refund webhook → update appointment `refundStatus` in DB
 - ⬜ Slot freed on cancellation (`isBooked: false`)
 
+### Discount & gift card logic
+- ✅ `discount_codes` table in schema — type (percent/fixed), value, maxUses, firstBookingOnly, expiresAt
+- ✅ `gift_cards` table in schema — code, balance, purchasedBy, redeemedBy, expiresAt
+- ✅ `Appointment` + `Order` updated — discountCodeId, giftCardId, discountAmount, amountPaid fields
+- ⬜ Server-side price calculation utility — computes final amount after discounts (never trust client price)
+- ⬜ Promo code validation API (`POST /api/discount/validate`) — checks code exists, not expired, not maxed out
+- ⬜ Gift card validation API (`POST /api/gift-card/validate`) — checks code, returns remaining balance
+- ⬜ Welcome discount (−20%) — auto-applied on first booking via `isFirstVisit` flag
+- ⬜ Loyalty reward — flag on profile at 10th confirmed appointment, specialist manually redeems
+
+### Error handling (to implement per route in Phase 4+)
+- ⬜ Consistent API error format: `{ error: string, code?: string, fieldErrors?: Record<string, string[]> }`
+- ⬜ Race condition on slot booking — catch Prisma unique constraint error (`P2002`), return "Ce créneau vient d'être pris"
+- ⬜ Stripe payment failed webhook (`payment_intent.payment_failed`) — cancel appointment, free slot
+- ⬜ Stripe error codes → French user messages (card_declined, insufficient_funds, expired_card, incorrect_cvc)
+- ⬜ Stripe webhook signature verification on every webhook route
+- ⬜ Never expose raw Prisma/DB errors to client — log server-side, return generic message
+- ⬜ React error boundary on booking wizard and `/compte` page
+
+### Input security
+- ✅ `src/lib/validation.ts` — shared Zod schemas for all user inputs
+  - HTML tag stripping on all free-text fields (notes, messages, names)
+  - Max lengths on every field (prevents payload bloat)
+  - Regex patterns: email (RFC), phone, promo codes (uppercase alphanumeric)
+  - `parseBody()` helper — parse + return typed field errors for API routes
+  - Schemas: `bookingSchema`, `reviewSchema`, `contactSchema`, `newsletterSchema`, `profileUpdateSchema`, `discountCodeInputSchema`, `giftCardInputSchema`, `slotSchema`, `reviewReplySchema`
+- ✅ Security HTTP headers in `next.config.ts` — X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- ⬜ Rate limiting on sensitive routes (auth, booking, contact) — Upstash Redis `@upstash/ratelimit`
+  - Login attempts: 5 per 15 min per IP
+  - Booking creation: 3 per hour per IP
+  - Contact form: 5 per hour per IP
+- ⬜ All API routes must use `parseBody()` from `src/lib/validation.ts` — no raw `req.json()` without validation
+- ⬜ Stripe amount double-check — compare PaymentIntent amount against DB service price before confirming
+
 ### Static data (deferred from Phase 2)
 - ⬜ `/prestations` and `/soins/[id]` — replace `src/lib/soins.ts` with Prisma query
 - ⬜ `/soins/[id]` reviews section — replace hardcoded reviews with real DB data
@@ -252,4 +286,4 @@
 
 ## Current phase: Phase 4 — Booking + Stripe
 ## Last session: 2026-05-19
-## Next step: Wire booking wizard to real DB (availability slots, appointment creation, Stripe payment)
+## Next step: Specialist availability management → real slots → booking wizard wiring → Stripe payment
