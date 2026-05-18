@@ -60,26 +60,39 @@
 
 ## Phase 2 — Supabase setup
 
-### Planned schema (discussed, not yet created)
-```
-profiles        — extension of auth.users (name, phone, role: client | specialist)
-services        — the 6 soins (name, price, duration, category, description)
-appointments    — bookings (client_id → profiles, service_id → services, date, time, status, notes)
-reviews         — client reviews (appointment_id → appointments, stars, body, approved)
-products        — deco products (name, price, stock, images)
-orders          — client orders (client_id → profiles, total, status)
-order_items     — order lines (order_id → orders, product_id → products, qty, price)
-```
-RLS rules: clients see own rows only; specialist (role check) sees all; approved reviews are public.
+### ORM & database tooling
+- ✅ Prisma 7.8.0 installed (`prisma` + `@prisma/client`)
+- ✅ `@prisma/adapter-pg` + `pg` installed — required by Prisma 7 (URLs removed from schema)
+- ✅ `tsx` installed as TypeScript runner for seed script
+- ✅ `prisma.config.ts` — Prisma 7 config: loads `.env.local`, uses `DIRECT_URL` for migrations
+- ✅ `src/lib/prisma.ts` — singleton PrismaClient with pg adapter + hot-reload safe globalThis pattern
 
-### Todo
-- ⬜ Create Supabase project (dashboard.supabase.com)
-- ⬜ Write SQL migrations for all 7 tables
-- ⬜ Add RLS policies per table
-- ⬜ Seed database (fake services + products matching current static data)
-- ⬜ Add `.env.local` keys (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-- ⬜ Replace static `SOINS` data with Supabase query on `/prestations` and `/soins/[id]`
-- ⬜ Replace static product data on `/decorations` with Supabase query
+### Schema
+- ✅ `prisma/schema.prisma` — 8 models, 5 enums, snake_case table names via `@@map`
+  - `Profile` (extends auth.users), `Service`, `AvailabilitySlot`, `Appointment`
+  - `Review`, `Product`, `Order`, `OrderItem`
+  - Enums: `UserRole`, `AppointmentStatus`, `RefundStatus`, `OrderStatus`, `ServiceCategory`
+- ✅ Migration applied to Supabase: `prisma/migrations/20260518185152_init/migration.sql`
+
+### RLS & indexes
+- ✅ `supabase/migrations/001_rls_policies.sql` — RLS on all 8 tables
+  - Fixed `auth.uid()::text` cast (Prisma stores IDs as `text`, not `uuid`)
+  - Idempotent: `DROP POLICY IF EXISTS` before each `CREATE POLICY`
+  - 16 indexes on FK columns + frequently queried fields (status, isPublished, slug, date…)
+  - `reviews.stars` CHECK constraint (1–5)
+- ✅ RLS policies applied to live Supabase database
+
+### Seed
+- ✅ `prisma/seed.ts` — seeds 6 soins (exact match to `src/lib/soins.ts`) + 5 artwork products
+- ✅ Seed executed successfully — data live in Supabase
+
+### Environment
+- ✅ `.env.local` — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, `DIRECT_URL` filled in
+- ✅ TypeScript types: `src/types/database.ts` exports all Prisma row types + composite types
+
+### Still to do
+- ⬜ Replace static `SOINS` data with Prisma query on `/prestations` and `/soins/[id]`
+- ⬜ Replace static product data on `/decorations` with Prisma query
 
 ---
 
@@ -180,6 +193,6 @@ RLS rules: clients see own rows only; specialist (role check) sees all; approved
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 2 — Supabase setup
-## Last session: 2026-05-17
-## Next step: Create Supabase project → write SQL schema → seed → wire to pages
+## Current phase: Phase 2 → Phase 3 (Auth)
+## Last session: 2026-05-18
+## Next step: Replace static SOINS/decorations data with Prisma queries, then wire Auth

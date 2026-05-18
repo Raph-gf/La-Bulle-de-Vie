@@ -1,8 +1,27 @@
-import type { Database } from "./database"
+/**
+ * Central type barrel — import all database types from here.
+ *
+ *   import type { Profile, Service, AppointmentWithDetails } from '@/types'
+ */
 
-export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
-export type Service = Database["public"]["Tables"]["services"]["Row"]
-export type Appointment = Database["public"]["Tables"]["appointments"]["Row"]
-export type Review = Database["public"]["Tables"]["reviews"]["Row"]
-export type Product = Database["public"]["Tables"]["products"]["Row"]
-export type Order = Database["public"]["Tables"]["orders"]["Row"]
+export type {
+  Database,
+  Json,
+  Profile,
+  Service,
+  AvailabilitySlot,
+  Appointment,
+  Review,
+  Product,
+  Order,
+  OrderItem,
+  UserRole,
+  AppointmentStatus,
+  RefundStatus,
+  OrderStatus,
+  ServiceCategory,
+  AppointmentWithDetails,
+  ReviewWithDetails,
+  OrderWithItems,
+  ServiceWithStats,
+} from "./database";

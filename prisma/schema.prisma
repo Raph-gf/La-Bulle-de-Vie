@@ -1,0 +1,203 @@
+// La Bulle De Vie — Prisma Schema
+// Supabase/PostgreSQL backend
+// Prisma 5.x / 6.x compatible
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  client
+  specialist
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum RefundStatus {
+  none
+  requested
+  refunded
+}
+
+enum OrderStatus {
+  pending
+  paid
+  shipped
+  cancelled
+}
+
+enum ServiceCategory {
+  massage
+  energetique
+  creation
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// Extends Supabase auth.users — id is the same UUID from auth.users
+model Profile {
+  id        String   @id
+  fullName  String
+  phone     String?
+  role      UserRole @default(client)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+  orders       Order[]
+  reviews      Review[]
+
+  @@map("profiles")
+}
+
+model Service {
+  id              String          @id @default(uuid())
+  name            String
+  slug            String          @unique
+  description     String
+  durationMinutes Int
+  /// Price in euro cents (e.g. 10500 = 105.00 €)
+  price           Int
+  category        ServiceCategory
+  isPublished     Boolean         @default(true)
+  imageUrl        String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  appointments Appointment[]
+  reviews      Review[]
+
+  @@map("services")
+}
+
+model AvailabilitySlot {
+  id        String   @id @default(uuid())
+  /// Date only — stored as DATE in PostgreSQL
+  date      DateTime @db.Date
+  /// 24h format, e.g. "09:00"
+  startTime String
+  /// 24h format, e.g. "10:00"
+  endTime   String
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  appointment Appointment?
+
+  @@map("availability_slots")
+}
+
+model Appointment {
+  id                    String            @id @default(uuid())
+  clientId              String
+  serviceId             String
+  /// One-to-one link to the slot — booking a slot marks it as taken
+  slotId                String            @unique
+  status                AppointmentStatus @default(pending)
+  notes                 String?
+  isFirstVisit          Boolean           @default(false)
+  /// "cabinet" | "domicile"
+  location              String
+  stripePaymentIntentId String?
+  refundStatus          RefundStatus      @default(none)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  client  Profile          @relation(fields: [clientId], references: [id])
+  service Service          @relation(fields: [serviceId], references: [id])
+  slot    AvailabilitySlot @relation(fields: [slotId], references: [id])
+  review  Review?
+
+  @@map("appointments")
+}
+
+/// Post-appointment review tied to a specific service.
+/// stars is validated at the application layer (1–5).
+/// Use a CHECK constraint in the migration SQL if adding via raw SQL.
+model Review {
+  id              String   @id @default(uuid())
+  appointmentId   String   @unique
+  serviceId       String
+  clientId        String
+  /// Must be between 1 and 5 — enforce with a DB CHECK constraint
+  stars           Int
+  body            String
+  approved        Boolean  @default(false)
+  specialistReply String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  service     Service     @relation(fields: [serviceId], references: [id])
+  client      Profile     @relation(fields: [clientId], references: [id])
+
+  @@map("reviews")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  /// Price in euro cents
+  price       Int
+  stock       Int      @default(0)
+  /// E.g. "Acrylique sur toile", "Aquarelle"
+  medium      String
+  /// E.g. "40 × 50 cm"
+  dimensions  String
+  imageUrl    String?
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id                    String      @id @default(uuid())
+  clientId              String
+  status                OrderStatus @default(pending)
+  /// Total in euro cents
+  total                 Int
+  stripePaymentIntentId String?
+  shippingAddress       Json?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  client Profile     @relation(fields: [clientId], references: [id])
+  items  OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  /// Price snapshot at time of purchase, in euro cents
+  unitPrice Int
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
