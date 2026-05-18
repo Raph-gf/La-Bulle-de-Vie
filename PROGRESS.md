@@ -90,23 +90,45 @@
 - ✅ `.env.local` — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, `DIRECT_URL` filled in
 - ✅ TypeScript types: `src/types/database.ts` exports all Prisma row types + composite types
 
-### Still to do
+### Still to do (deferred to later phases)
 - ⬜ Replace static `SOINS` data with Prisma query on `/prestations` and `/soins/[id]`
 - ⬜ Replace static product data on `/decorations` with Prisma query
 
 ---
 
-## Phase 3 — Auth
+## Phase 3 — Auth ✅ Complete
 
-- ✅ Login page UI (`/login`) — exists as placeholder
-- ✅ Register page UI (`/register`) — exists as placeholder
-- ✅ `(client)` route group guard — redirects to `/login` if not authenticated
-- ✅ `(dashboard)` route group — exists
-- ⬜ Wire login form to Supabase `signInWithPassword`
-- ⬜ Wire register form to Supabase `signUp`
-- ⬜ Google OAuth — configure in Supabase dashboard + add button
-- ⬜ Profile auto-created on signup (Supabase DB trigger or `signUp` callback)
-- ⬜ Test route guards end-to-end with real sessions
+- ✅ Login page (`/login`) — full Connexion.html design, 4 modes: login / register / forgot / success
+  - React Hook Form + Zod validation on all 3 forms
+  - Floating label inputs, password strength meter, show/hide toggle
+  - Google account picker → real OAuth redirect
+- ✅ `/register` redirects to `/login?mode=register`
+- ✅ Login form wired to Supabase `signInWithPassword` — redirects to `/compte` on success
+- ✅ Register form wired to Supabase `signUp` — stores `full_name` + `phone` in user metadata
+- ✅ Forgot password wired to `resetPasswordForEmail`
+- ✅ Google OAuth working — `signInWithOAuth({ provider: "google" })`
+- ✅ `src/app/auth/callback/route.ts` — exchanges OAuth code for session, redirects to `/compte`
+- ✅ Inline auth error display (wrong password, duplicate email, etc.)
+- ✅ `(client)/layout.tsx` guard — redirects unauthenticated users to `/login`
+- ✅ Navbar avatar — shows user initial in terracotta circle when logged in, links to `/compte`
+- ✅ Mon compte page (`/compte`) — 7-view account space (sidebar SPA pattern)
+  - Views: Mon espace, Rendez‑vous, Historique, Favoris, Préférences, Paiement, Cadeaux, Profil & sécurité
+  - User name/initial from Supabase auth, working logout (`signOut` + redirect)
+  - Live countdown timer, toggle switches, toast notifications
+  - Hash-based routing (`#overview`, `#appts`, etc.), mobile drawer
+- ⬜ Profile row auto-created in `profiles` table on signup (DB trigger or callback)
+
+### Mon compte — data to wire up (deferred)
+- ⬜ Appointments view: replace placeholder séances with real Prisma query
+- ⬜ History view: query past appointments from DB
+- ⬜ Stats: query real counts (total séances, reviews, etc.)
+- ⬜ Overview: show real next appointment + real countdown target
+- ⬜ Loyalty bar: compute from real appointment count
+- ⬜ Favorites: store/query favorites in DB
+- ⬜ Payments: pull Stripe payment methods via API
+- ⬜ Gifts: query gift cards from DB
+- ⬜ Settings form: save changes to `profiles` table
+- ⬜ Notification preferences: persist to `profiles` table
 
 ---
 
@@ -193,6 +215,6 @@
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 2 → Phase 3 (Auth)
-## Last session: 2026-05-18
-## Next step: Replace static SOINS/decorations data with Prisma queries, then wire Auth
+## Current phase: Phase 4 — Booking + Stripe
+## Last session: 2026-05-19
+## Next step: Wire booking wizard to real DB (availability slots, appointment creation, Stripe payment)
