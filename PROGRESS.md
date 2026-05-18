@@ -134,23 +134,42 @@
 
 ## Phase 4 — Booking + Stripe
 
-- ✅ Booking wizard UI with placeholder data (see Phase 1)
-- ⬜ Replace placeholder slots with real availability from `appointments` table
-- ⬜ On wizard submit → create `appointment` row in Supabase (status: `pending`)
-- ⬜ Create Stripe payment intent on booking submit
-- ⬜ Add Stripe card payment step (Stripe Elements) after step 5
-- ⬜ Stripe webhook: `payment_intent.succeeded` → set appointment status to `confirmed`
-- ⬜ Appointment confirmation page with receipt
-- ⬜ Cancel appointment → trigger Stripe refund based on cancellation policy
-- ⬜ Refund webhook → update appointment status in DB
+> Prerequisite: specialist must be able to set availability before clients can book real slots.
+
+### Specialist availability (prerequisite)
+- ⬜ Specialist sets weekly working hours in dashboard (stored in `availability_slots`)
+- ⬜ Specialist can block specific dates / add one-off slots
+
+### Booking wizard wiring
+- ✅ Booking wizard UI — 5-step flow exists (service → date → time → contact → review)
+- ⬜ Step 2 calendar: fetch real available dates from `availability_slots` (not fake deterministic logic)
+- ⬜ Step 3 time slots: fetch real slots for selected date from `availability_slots`
+- ⬜ Step 4 contact: pre-fill name/email/phone from Supabase user if logged in
+- ⬜ Step 5 submit → create `appointment` row (status: `pending`) + mark slot as `isBooked: true` (atomic transaction)
+- ⬜ Add Stripe payment step after review — Stripe Elements card form
+- ⬜ Create Stripe `PaymentIntent` server-side on booking submit
+- ⬜ Stripe webhook: `payment_intent.succeeded` → set appointment `status: confirmed`
+- ⬜ Appointment confirmation / receipt page (shown after successful payment)
+
+### Cancellation & refunds
+- ⬜ Client can cancel from `/compte#appts` → trigger Stripe refund based on cancellation policy
+- ⬜ Refund webhook → update appointment `refundStatus` in DB
+- ⬜ Slot freed on cancellation (`isBooked: false`)
+
+### Static data (deferred from Phase 2)
+- ⬜ `/prestations` and `/soins/[id]` — replace `src/lib/soins.ts` with Prisma query
+- ⬜ `/soins/[id]` reviews section — replace hardcoded reviews with real DB data
 
 ---
 
 ## Phase 5 — Notifications
 
-- ⬜ Resend — booking confirmation email to client
-- ⬜ Resend — instant notification to specialist on new booking (name, date, time, service, notes)
-- ⬜ Resend — 24h reminder email to client
+- ⬜ Resend SMTP configured in Supabase (replaces default email for auth flows)
+- ⬜ Booking confirmation email to client (service, date, time, location, cancellation link)
+- ⬜ Instant notification to specialist on new booking (client name, date, time, service, notes)
+- ⬜ 24h reminder email to client
+- ⬜ Contact form (`/contact`) → send message to specialist via Resend
+- ⬜ Newsletter form (home + footer) → store subscriber email in DB / send to mailing list
 - ⬜ Google Calendar — one-click "Add to my calendar" after booking confirmation
 - ⬜ Google Calendar — auto-add event to specialist's calendar on booking
 
@@ -158,34 +177,50 @@
 
 ## Phase 6 — Specialist Dashboard
 
-- ✅ Dashboard layout exists (sidebar placeholder)
-- ✅ Dashboard sub-pages exist as placeholders: rendez-vous, clients, finances, avis, boutique
-- ⬜ Overview — stats cards, today's appointments
-- ⬜ Agenda — calendar view + appointment list + detail modal
-- ⬜ Availability management (working hours, blocked dates)
-- ⬜ Clients — list, search, profile with history + notes
-- ⬜ Finances — revenue chart (Stripe-synced), refund tracker, CSV export
-- ⬜ Invoice generation (PDF)
-- ⬜ Reviews — approve/hide, reply, aggregate score per service
-- ⬜ Services management — edit price, duration, visibility
-- ⬜ Boutique — add/edit/delete products, stock, orders list
-- ⬜ Settings — profile, working hours, cancellation policy
+> Dashboard layout and sidebar exist but all sub-pages are empty placeholders.
+
+- ✅ Dashboard layout with sidebar navigation
+- ✅ Sub-page stubs: rendez-vous, clients, finances, avis, boutique
+- ⬜ Overview — today's appointments, weekly stats, revenue snapshot
+- ⬜ Agenda — calendar view, appointment list, detail modal (client name, service, notes)
+- ⬜ Availability management — set weekly hours, block dates, add one-off slots
+- ⬜ Clients — list with search, client profile (history, specialist notes per client)
+- ⬜ Finances — monthly revenue chart (Stripe-synced), refund tracker, CSV export
+- ⬜ Invoice generation (PDF) per client on demand
+- ⬜ Reviews — list, approve/hide, reply, aggregate rating per service
+- ⬜ Services management — edit price, duration, description, toggle published
+- ⬜ Boutique — add/edit/delete products, stock management, orders list
+- ⬜ Settings — profile, working hours, cancellation policy config
+- ⬜ Dashboard auth guard — only `role: specialist` can access
 
 ---
 
 ## Phase 7 — E-commerce
 
-- ✅ Décorations catalog page (static data)
-- ⬜ Wire catalog to real Supabase products
-- ⬜ Cart (useCart hook + cart drawer + `/panier` page)
-- ⬜ Stripe checkout for cart
-- ⬜ Order confirmation page + email
-- ⬜ Client order history in `/compte`
-- ⬜ Specialist marks order as shipped
+- ✅ Décorations catalog page (static data, UI complete)
+- ⬜ Wire catalog to real Prisma products from DB
+- ⬜ "Ajouter au panier" → real cart state (Zustand or React context)
+- ⬜ Cart drawer + `/panier` page showing items, quantities, total
+- ⬜ Stripe checkout for cart (PaymentIntent or Checkout Session)
+- ⬜ Order confirmation page + confirmation email via Resend
+- ⬜ Client order history wired in `/compte#history`
+- ⬜ Specialist marks order as shipped in dashboard boutique
 
 ---
 
-## Phase 8 — Polish
+## Phase 8 — Missing pages & loose ends
+
+- ⬜ Password reset form — `/login?mode=reset` (after clicking email link, let user enter new password via `updateUser`)
+- ⬜ Profile auto-created in `profiles` table on signup (Supabase DB trigger)
+- ⬜ Review submission — form triggered from `/compte#history` after completed appointment
+- ⬜ Gift card purchase + redemption flow
+- ⬜ Favorites — store in DB, toggle from `/soins/[id]` page
+- ⬜ 404 page
+- ⬜ `/compte` data wiring (see Phase 3 deferred list above)
+
+---
+
+## Phase 9 — Polish & deploy
 
 - ⬜ SMS reminders via Twilio (24h before appointment)
 - ⬜ Push notifications via OneSignal
