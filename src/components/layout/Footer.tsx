@@ -18,6 +18,8 @@ export default function Footer() {
             <Link href="/#faq">FAQ</Link>
             <Link href="/contact">Nous contacter</Link>
             <Link href="#">Cartes cadeaux</Link>
+            <Link href="/login">Se connecter</Link>
+            <Link href="/register">Créer un compte</Link>
           </div>
           <div className="foot-col">
             <h4>Conditions</h4>

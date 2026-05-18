@@ -47,6 +47,13 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
+          <Link
+            href="/login"
+            className={`nav-link ${pathname === "/login" ? "active" : ""}`}
+            onClick={() => setOpen(false)}
+          >
+            Se connecter
+          </Link>
           <Link className="btn primary" href="/booking" onClick={() => setOpen(false)}>
             Réserver <span className="arrow">→</span>
           </Link>
