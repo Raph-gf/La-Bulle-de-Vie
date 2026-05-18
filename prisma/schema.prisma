@@ -51,13 +51,19 @@ enum ServiceCategory {
 
 /// Extends Supabase auth.users — id is the same UUID from auth.users
 model Profile {
-  id        String   @id
-  fullName  String
-  phone     String?
-  role      UserRole @default(client)
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String   @id
+  fullName               String
+  phone                  String?
+  role                   UserRole @default(client)
+  avatarUrl              String?
+  /// Saved preference for booking form pre-fill — "cabinet" | "domicile"
+  preferredLocation      String?
+  /// Saved shipping address for e-commerce checkout pre-fill
+  defaultShippingAddress Json?
+  /// Private specialist notes about this client (dashboard only, never shown to client)
+  specialistNotes        String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   appointments Appointment[]
   orders       Order[]
