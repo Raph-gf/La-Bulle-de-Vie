@@ -69,6 +69,20 @@ model Profile {
   specialistNotes        String?
   /// Notification preferences — { rappel24h, rappel2h, sms, newsletter }
   notificationPrefs      Json?
+  /// Specialist only — cabinet address used as origin for travel distance calculation
+  cabinetAddress         String?
+  /// Specialist only — lat/lng of cabinet, cached to avoid repeated geocoding
+  cabinetLat             Float?
+  cabinetLng             Float?
+  /// Specialist only — travel pricing config (JSON)
+  /// Shape: { type: "zones" | "per_km", perKmRate?: number,
+  ///           zones?: [{ maxKm: number, feeInCents: number }][],
+  ///           maxDistanceKm: number }
+  travelPricing          Json?
+  /// Specialist only — TVA/tax settings per service type (JSON)
+  /// Shape: { servicesVatRate: number, productsVatRate: number }
+  /// French massage (bien-être) is typically TVA-exempt (0%) — specialist can override
+  taxSettings            Json?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -92,6 +106,8 @@ model Service {
   category        ServiceCategory
   isPublished     Boolean         @default(true)
   imageUrl        String?
+  /// VAT rate as integer percentage — 0 for TVA-exempt (most massage/bien-être), 20 for standard
+  vatRate         Int             @default(0)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -135,6 +151,10 @@ model Appointment {
   guestPhone            String?
   stripePaymentIntentId String?
   refundStatus          RefundStatus      @default(none)
+  /// Client address for home visits — required when location = "domicile"
+  clientAddress         String?
+  /// Travel surcharge in euro cents — computed from distance, added to amountPaid
+  travelFee             Int               @default(0)
   /// Discount applied — FK to discount_codes if a promo code was used
   discountCodeId        String?
   /// Gift card applied — FK to gift_cards if one was used
@@ -192,6 +212,8 @@ model Product {
   dimensions  String
   imageUrl    String?
   isPublished Boolean  @default(true)
+  /// VAT rate as integer percentage — typically 20% for physical products in France
+  vatRate     Int      @default(20)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

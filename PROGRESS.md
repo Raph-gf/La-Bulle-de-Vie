@@ -156,6 +156,34 @@
 - ⬜ Refund webhook → update appointment `refundStatus` in DB
 - ⬜ Slot freed on cancellation (`isBooked: false`)
 
+### Travel distance pricing
+- ✅ Schema ready — `Profile.travelPricing` (JSON), `Profile.cabinetAddress/Lat/Lng`, `Appointment.clientAddress`, `Appointment.travelFee`
+- ⬜ Specialist configures travel pricing in dashboard settings:
+  - **Option A — Zones** (recommended for simplicity): define up to 5 concentric zones
+    - e.g. 0–5 km: +0€ · 5–15 km: +10€ · 15–30 km: +25€ · >30 km: indisponible
+  - **Option B — Per km**: set a rate per km (e.g. 0.45€/km) + optional minimum fee
+  - Set maximum travel distance (requests beyond this are blocked at booking)
+  - Enter cabinet address → geocoded to lat/lng on save (Google Maps Geocoding API or free alternative)
+- ⬜ Booking wizard step 4 ("à domicile" selected):
+  - Show address input field for client
+  - Call `/api/travel-fee` with client address → returns calculated surcharge
+  - Display breakdown: "Service 105€ + Déplacement 15€ = 120€"
+- ⬜ `/api/travel-fee` endpoint:
+  - Geocode client address → lat/lng
+  - Compute straight-line distance with Haversine formula (no API needed)
+  - Look up specialist's zone config, return fee in cents
+  - Upgrade path: swap Haversine for Google Maps Distance Matrix API for road distance
+- ⬜ `Appointment.travelFee` stored and included in `amountPaid` (Stripe charge)
+- ⬜ Travel fee shown on confirmation page and invoice
+
+### Tax / VAT settings
+- ✅ Schema ready — `Service.vatRate` (default 0%), `Product.vatRate` (default 20%), `Profile.taxSettings` (JSON)
+- French context: massage/bien-être services are typically **TVA-exempt** (0%) — specialist toggles per service
+- Physical products (décoration) are at **20% TVA** standard rate
+- ⬜ Specialist can override VAT rate per service in dashboard (0%, 5.5%, 10%, 20%)
+- ⬜ VAT amount calculated server-side and shown as a line item on invoices
+- ⬜ `Profile.taxSettings` stores specialist's SIRET + VAT registration status for invoice generation
+
 ### Discount & gift card logic
 - ✅ `discount_codes` table in schema — type (percent/fixed), value, maxUses, firstBookingOnly, expiresAt
 - ✅ `gift_cards` table in schema — code, balance, purchasedBy, redeemedBy, expiresAt
