@@ -385,5 +385,19 @@
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
 ## Current phase: Phase 4 — Booking + Stripe
-## Last session: 2026-05-19
-## Next step: Booking confirmation page (for 3DS redirect fallback) + cancellation/refund flow
+## Last session: 2026-05-20
+## Next step: Cancellation/refund flow + email notifications (Resend)
+
+---
+
+## Notes
+
+### Apple Pay — domain registration required
+Apple Pay via Stripe's `ExpressCheckoutElement` requires the domain to be registered in the Stripe Dashboard before the button appears.
+Steps:
+1. Stripe Dashboard → Settings → Payment methods → Apple Pay
+2. Add the production domain (e.g. `labulldevie.fr`) and each Vercel preview domain if needed
+3. Stripe auto-generates a `/.well-known/apple-developer-merchantid-domain-association` file — verify it resolves
+
+Apple Pay will **not** appear on localhost — test on Vercel preview or production.
+Google Pay works on Chrome desktop and Android; no domain registration required.
