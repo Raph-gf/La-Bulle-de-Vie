@@ -66,7 +66,7 @@ export default function AddressAutocomplete({ value, onSelect, onChange, placeho
   }
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <input
         type="text"
         value={value}
