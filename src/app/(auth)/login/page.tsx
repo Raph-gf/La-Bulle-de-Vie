@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -460,7 +461,15 @@ function Aside() {
 }
 
 // ── Main page ────────────────────────────────────────────────────────
-export default function ConnexionPage() {
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <ConnexionPage />
+    </Suspense>
+  )
+}
+
+function ConnexionPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [mode, setMode] = useState<Mode>("login")

@@ -137,15 +137,28 @@
 > Prerequisite: specialist must be able to set availability before clients can book real slots.
 
 ### Specialist availability (prerequisite)
-- ⬜ Specialist sets weekly working hours in dashboard (stored in `availability_slots`)
+- ✅ Specialist sets weekly working hours in dashboard (`/dashboard/disponibilites`)
+  - Toggle each day (Mon–Sat), set start/end time per day
+  - Choose slot duration: 30 / 45 / 60 / 90 min
+  - Optional lunch break time range
+  - Live slot count preview per day + weekly total
+  - "Générer les créneaux" → generates real `availability_slots` rows for next 60 days
+  - `GET /api/dashboard/availability` — load saved schedule + upcoming slot count
+  - `POST /api/dashboard/availability` — save schedule + regenerate slots
 - ⬜ Specialist can block specific dates / add one-off slots
 
 ### Booking wizard wiring
 - ✅ Booking wizard UI — 5-step flow exists (service → date → time → contact → review)
-- ⬜ Step 2 calendar: fetch real available dates from `availability_slots` (not fake deterministic logic)
-- ⬜ Step 3 time slots: fetch real slots for selected date from `availability_slots`
-- ⬜ Step 4 contact: pre-fill name/email/phone from Supabase user if logged in
-- ⬜ Step 5 submit → create `appointment` row (status: `pending`) + mark slot as `isBooked: true` (atomic transaction)
+- ✅ Step 2 calendar: fetches real available dates from `GET /api/booking/availability/dates`
+- ✅ Step 3 time slots: fetches real slots from `GET /api/booking/availability/slots?date=`
+  - Real `slotId` stored on selection (ready to link to appointment row)
+  - Shows "no slots" message when date has nothing available
+- ✅ Step 4 contact: pre-fills name/email/phone from logged-in user's profile (server-side props)
+- ✅ Step 5 submit → `POST /api/booking` — creates `appointment` row (status: `pending`) + marks slot `isBooked: true` (atomic transaction)
+  - Handles slot race condition: P2002 unique constraint → friendly 409 "créneau vient d'être pris"
+  - Accepts `serviceSlug` (maps to DB service ID server-side)
+  - Guest bookings supported (no auth required)
+  - Returns real `ref` code (BDV-XXXXXX) shown on success screen
 - ⬜ Add Stripe payment step after review — Stripe Elements card form
 - ⬜ Create Stripe `PaymentIntent` server-side on booking submit
 - ⬜ Stripe webhook: `payment_intent.succeeded` → set appointment `status: confirmed`
@@ -239,21 +252,70 @@
 
 ## Phase 6 — Specialist Dashboard
 
-> Dashboard layout and sidebar exist but all sub-pages are empty placeholders.
+### App shell ✅
+- ✅ Dashboard layout — CSS grid `260px 1fr`, sticky sidebar, main column
+- ✅ `dashboard.css` — full design system port (KPI tiles, cards, tables, agenda, calendar, reviews, settings)
+- ✅ Sidebar (`Sidebar.tsx`) — dark `#1a110b`, 3 sections (Aujourd'hui / Catalogue / Réglages), active accent bar, badges, logout
+- ✅ Topbar (`Topbar.tsx`) — breadcrumb (Zustand-ready), pill search, bell icon with **real** pending dot (reads from Zustand `pendingCount`), "Nouveau RDV" button
+- ✅ `DashBodyClass.tsx` — client component that adds/removes `body.dash` via `useEffect` (can't set body class from server layout in Next.js App Router)
+- ✅ Auth guard — `(dashboard)/layout.tsx` redirects non-specialists to `/`
 
-- ✅ Dashboard layout with sidebar navigation
-- ✅ Sub-page stubs: rendez-vous, clients, finances, avis, boutique
-- ⬜ Overview — today's appointments, weekly stats, revenue snapshot
-- ⬜ Agenda — calendar view, appointment list, detail modal (client name, service, notes)
-- ⬜ Availability management — set weekly hours, block dates, add one-off slots
-- ⬜ Clients — list with search, client profile (history, specialist notes per client)
-- ⬜ Finances — monthly revenue chart (Stripe-synced), refund tracker, CSV export
-- ⬜ Invoice generation (PDF) per client on demand
-- ⬜ Reviews — list, approve/hide, reply, aggregate rating per service
-- ⬜ Services management — edit price, duration, description, toggle published
-- ⬜ Boutique — add/edit/delete products, stock management, orders list
-- ⬜ Settings — profile, working hours, cancellation policy config
-- ⬜ Dashboard auth guard — only `role: specialist` can access
+### Data layer ✅ (2026-05-19)
+- ✅ **Zustand** (`src/lib/stores/useSessionStore.ts`) — `userName`, `role`, `pendingCount` shared across all client components; `incrementPending` / `decrementPending` for granular notification updates
+- ✅ **TanStack Query** (`@tanstack/react-query` v5) — `QueryProvider` wraps the full dashboard with `staleTime: 60s`
+- ✅ `SessionInitializer.tsx` — server layout fetches `pendingReviews + pendingAppts` counts and seeds Zustand on mount (no client-side round-trip needed for initial state)
+- ✅ Query hooks (`src/lib/queries/appointments.ts`):
+  - `useAppointments(from?, to?)` — generic range query, keyed by params
+  - `useWeekAppointments(weekStart, weekEnd)` — keyed by `["appointments", "week", weekStart]`
+  - `useTodayAppointments(today, tomorrow)` — 2-minute stale time
+  - `useConfirmAppointment()` — mutation that auto-invalidates appointments cache on success
+- ✅ ReactQueryDevtools included in dev (invisible in prod)
+
+### Accueil (overview) ✅
+- ✅ Greeting with first name + today's date
+- ✅ KPI grid — featured dark tile (upcoming count + SVG sparkline), RDV du jour, nouveaux clients 7j, note moyenne from approved reviews
+- ✅ **"Le programme du jour"** card (`TodayAgendaCard.tsx`) — now a TanStack Query client component:
+  - 3 tabs: **Aujourd'hui / Demain / Cette semaine** (matching the design exactly)
+  - Tab switches fetch new data; previously fetched tabs served instantly from cache
+  - Server passes `initialAppts` to avoid flash on first load
+  - Tiny orange dot during background refetch
+- ✅ Alerts card — pending reviews count (linked to `/dashboard/avis`), Stripe placeholder, empty-slot warning
+- ✅ Activity feed from today's appointments
+- ✅ Revenue chart placeholder with "Activez Stripe" CTA
+- ✅ Prochains RDV summary card
+
+### Agenda ✅
+- ✅ Agenda page (`/dashboard/rendez-vous`) — refactored to TanStack Query (no manual `useState/useEffect/fetch`)
+  - `useWeekAppointments` for semaine view — cached per week, instant on back-navigation
+  - `useAppointments()` for liste view — shared cache with other query consumers
+- ✅ Week calendar — one flat `.week` CSS Grid (all 104 cells as direct children so `nth-child(8n)` works for Sunday border removal)
+  - Events: percentage-based `top` / `height` (matches the design's JS exactly)
+  - Event content: `<strong>clientName</strong>serviceName` — name in Cormorant Garamond block, service after
+  - Status colours: confirmed (green), pending (amber), blocked (muted)
+- ✅ List view — grouped by date, correct `.pill` class (cream badge, no status dot)
+- ✅ Detail drawer — right-side panel with backdrop, animated in, "Confirmer" / "Fermer" actions
+- ✅ Google Calendar placeholder banner with "Connecter Google Agenda" CTA (not yet wired)
+
+### Paramètres ✅
+- ✅ Cabinet address input + Nominatim geocode (OSM, no paid API), shows map link on success
+- ✅ Travel zones editor — add/remove zones, set maxKm + fee in €, live zone preview table, max distance setting
+- ✅ VAT rate quick-select buttons per service and product category
+
+### API routes
+- ✅ `GET /api/dashboard/appointments` — date range params (`from`, `to`), specialist-only guard
+- ✅ `GET /api/dashboard/settings` — returns `cabinetAddress`, `cabinetLat/Lng`, `travelPricing`, `taxSettings`
+- ✅ `POST /api/dashboard/settings` — geocodes cabinet address, saves lat/lng
+
+### Still to build
+- ⬜ Clients page — searchable/filterable table + sticky detail panel (history, private notes)
+- ⬜ Finances page — KPI tiles + 12-month bar chart + transactions table + Stripe payouts
+- ⬜ Avis page — moderation (approve/hide/reply), linked to public soin review sections
+- ⬜ Prestations page — CRUD for soins (currently static data in `src/lib/soins.ts`)
+- ⬜ Boutique page — product table + orders tab + stock warnings
+- ⬜ Notifications page — email/SMS reminder toggles
+- ⬜ `POST /api/dashboard/appointments/:id/confirm` — confirm appointment + invalidate query cache
+- ⬜ Google Calendar OAuth integration — real two-way sync
+- ⬜ Revenue chart — real SVG bars from Stripe/DB data
 
 ---
 
@@ -314,4 +376,4 @@
 
 ## Current phase: Phase 4 — Booking + Stripe
 ## Last session: 2026-05-19
-## Next step: Specialist availability management → real slots → booking wizard wiring → Stripe payment
+## Next step: Stripe payment step — PaymentIntent server-side + Stripe Elements card form + webhook to confirm appointment

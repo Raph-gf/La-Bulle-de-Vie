@@ -8,6 +8,22 @@ import { createClient } from "@/lib/supabase/client"
 type View = "overview" | "appts" | "history" | "favorites" | "preferences" | "payments" | "gifts" | "settings"
 const ALL_VIEWS: View[] = ["overview", "appts", "history", "favorites", "preferences", "payments", "gifts", "settings"]
 
+type Appt = {
+  id: string
+  status: string
+  location: string
+  clientAddress: string | null
+  service: { name: string; durationMinutes: number; price: number }
+  slot: { date: string; startTime: string }
+}
+
+const MONTHS_SHORT = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Aoû","Sep","Oct","Nov","Déc"]
+
+function fmtApptDate(iso: string) {
+  const d = new Date(iso)
+  return { day: d.getUTCDate(), month: MONTHS_SHORT[d.getUTCMonth()] }
+}
+
 export default function ComptePage() {
   const router = useRouter()
   const [view, setView] = useState<View>("overview")
@@ -16,6 +32,8 @@ export default function ComptePage() {
   const [userName, setUserName] = useState("Chargement…")
   const [userEmail, setUserEmail] = useState("")
   const [userInitial, setUserInitial] = useState("?")
+  const [appts, setAppts] = useState<Appt[]>([])
+  const [apptsLoading, setApptsLoading] = useState(false)
   const [countdown, setCountdown] = useState({ d: "00", h: "00", m: "00" })
   const [toggles, setToggles] = useState({ "2fa": false, rappel24: true, rappel2h: true, sms: false, newsletter: true })
 
@@ -46,6 +64,15 @@ export default function ComptePage() {
     const iv = setInterval(tick, 30000)
     return () => clearInterval(iv)
   }, [])
+
+  useEffect(() => {
+    if (view !== "appts") return
+    setApptsLoading(true)
+    fetch("/api/user/appointments")
+      .then(r => r.json())
+      .then(d => setAppts(d.appointments ?? []))
+      .finally(() => setApptsLoading(false))
+  }, [view])
 
   function go(v: View) {
     setView(v)
@@ -443,30 +470,38 @@ export default function ComptePage() {
                   <h3>À venir</h3>
                   <Link href="/booking">+ Nouveau rendez‑vous</Link>
                 </div>
-                <div className="appt-item">
-                  <div className="appt-date"><div className="d">20</div><div className="m">Mai</div></div>
-                  <div className="appt-info">
-                    <div className="nm">Soin du corps · 60 min</div>
-                    <div className="det">10h00 <span className="sep">·</span> Cabinet Lyon 7ᵉ <span className="sep">·</span> 105€ <span className="sep">·</span> <span className="appt-status ok">Confirmé</span></div>
+                {apptsLoading && (
+                  <p style={{ color: "var(--mute)", fontStyle: "italic", padding: "16px 0" }}>Chargement…</p>
+                )}
+                {!apptsLoading && appts.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "var(--mute)" }}>
+                    <p style={{ fontFamily: "var(--serif)", fontSize: 18, marginBottom: 12 }}>Aucun rendez‑vous à venir.</p>
+                    <Link href="/booking" className="btn-small primary">Réserver une séance →</Link>
                   </div>
-                  <div className="appt-actions">
-                    <button className="btn-small primary">Détails</button>
-                    <button className="btn-small">Reporter</button>
-                    <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) showToast("Rendez‑vous annulé — remboursement en cours") }}>Annuler</button>
-                  </div>
-                </div>
-                <div className="appt-item">
-                  <div className="appt-date"><div className="d">28</div><div className="m">Mai</div></div>
-                  <div className="appt-info">
-                    <div className="nm">Soin galet chaud · 30 min</div>
-                    <div className="det">15h30 <span className="sep">·</span> Cabinet Lyon 7ᵉ <span className="sep">·</span> 55€ <span className="sep">·</span> <span className="appt-status pending">À confirmer</span></div>
-                  </div>
-                  <div className="appt-actions">
-                    <button className="btn-small primary">Détails</button>
-                    <button className="btn-small">Reporter</button>
-                    <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) showToast("Rendez‑vous annulé — remboursement en cours") }}>Annuler</button>
-                  </div>
-                </div>
+                )}
+                {!apptsLoading && appts.map(appt => {
+                  const { day, month } = fmtApptDate(appt.slot.date)
+                  const statusCls = appt.status === "confirmed" ? "ok" : appt.status === "pending" ? "pending" : ""
+                  const statusLabel = appt.status === "confirmed" ? "Confirmé" : appt.status === "pending" ? "En attente" : appt.status
+                  const lieu = appt.location === "domicile" ? `À domicile${appt.clientAddress ? ` — ${appt.clientAddress}` : ""}` : "Cabinet Lyon 7ᵉ"
+                  return (
+                    <div key={appt.id} className="appt-item">
+                      <div className="appt-date"><div className="d">{day}</div><div className="m">{month}</div></div>
+                      <div className="appt-info">
+                        <div className="nm">{appt.service.name} · {appt.service.durationMinutes} min</div>
+                        <div className="det">
+                          {appt.slot.startTime.replace(":", "h")}
+                          <span className="sep">·</span>{lieu}
+                          <span className="sep">·</span>{(appt.service.price / 100).toFixed(0)}€
+                          <span className="sep">·</span><span className={`appt-status${statusCls ? " " + statusCls : ""}`}>{statusLabel}</span>
+                        </div>
+                      </div>
+                      <div className="appt-actions">
+                        <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) showToast("Annulation envoyée") }}>Annuler</button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
               <div className="card">
                 <div className="card-head"><h3>Politique d&apos;annulation</h3></div>

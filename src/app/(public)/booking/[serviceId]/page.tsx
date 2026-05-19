@@ -1,5 +1,23 @@
 import BookingWizard from "@/components/booking/BookingWizard"
+import { createClient } from "@/lib/supabase/server"
+import { prisma } from "@/lib/prisma"
 
-export default function BookingPage({ params }: { params: { serviceId: string } }) {
-  return <BookingWizard serviceId={params.serviceId} />
+export default async function BookingPage({ params }: { params: Promise<{ serviceId: string }> }) {
+  const { serviceId } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  let userData = null
+  if (user) {
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { fullName: true, phone: true },
+    })
+    if (profile) {
+      userData = { fullName: profile.fullName, email: user.email ?? "", phone: profile.phone ?? "" }
+    }
+  }
+
+  return <BookingWizard serviceId={serviceId} userData={userData} />
 }

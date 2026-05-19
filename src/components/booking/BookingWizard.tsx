@@ -6,14 +6,13 @@ import { motion, AnimatePresence } from "motion/react"
 import { SOINS, SoinId } from "@/lib/soins"
 
 type Svc = { id: SoinId; name: string; price: number; dur: number }
-type Info = { first: string; last: string; email: string; phone: string; place: string; note: string }
-type ConfettiPart = { size: number; left: number; dur: number; delay: number; cx: number }
+type Info = { first: string; last: string; email: string; phone: string; place: string; address: string; note: string }
+type Slot = { id: string; startTime: string; endTime: string }
 
 const SOIN_ORDER: SoinId[] = ["visage", "sel", "galet", "mains", "corps", "jambes"]
 const STEPS = ["Soin", "Date", "Heure", "Vos infos", "Confirmer"]
 const MONTHS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
 const DOW = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"]
-const TIME_SLOTS = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00","19:00"]
 
 function fmtDate(d: Date | null) {
   if (!d) return "—"
@@ -21,23 +20,35 @@ function fmtDate(d: Date | null) {
   return `${dow} ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()}`
 }
 
+type UserData = { fullName: string; email: string; phone: string }
+
 interface Props {
   serviceId?: string
+  userData?: UserData | null
 }
 
-export default function BookingWizard({ serviceId }: Props) {
+export default function BookingWizard({ serviceId, userData }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [svc, setSvc] = useState<Svc | null>(null)
   const [date, setDate] = useState<Date | null>(null)
   const [time, setTime] = useState<string | null>(null)
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
-  const [info, setInfo] = useState<Info>({ first: "", last: "", email: "", phone: "", place: "cabinet", note: "" })
+  const [info, setInfo] = useState<Info>({ first: "", last: "", email: "", phone: "", place: "cabinet", address: "", note: "" })
   const [firstTime, setFirstTime] = useState(false)
   const [success, setSuccess] = useState(false)
   const [refCode, setRefCode] = useState("")
-  const [confetti, setConfetti] = useState<ConfettiPart[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [availableDates, setAvailableDates] = useState<Set<string>>(new Set())
+  const [availableSlots, setAvailableSlots] = useState<Slot[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [datesLoading, setDatesLoading] = useState(true)
+  const [travelFee, setTravelFee] = useState<number | null>(null)
+  const [travelFeeLoading, setTravelFeeLoading] = useState(false)
+  const [travelFeeError, setTravelFeeError] = useState<string | null>(null)
 
   useEffect(() => {
     const id = serviceId as SoinId | undefined
@@ -47,6 +58,64 @@ export default function BookingWizard({ serviceId }: Props) {
     }
   }, [serviceId])
 
+  useEffect(() => {
+    if (userData) {
+      const parts = userData.fullName.trim().split(" ")
+      setInfo((v) => ({
+        ...v,
+        first: parts[0] ?? v.first,
+        last: parts.slice(1).join(" ") || v.last,
+        email: userData.email || v.email,
+        phone: userData.phone || v.phone,
+      }))
+    }
+  }, [userData])
+
+  useEffect(() => {
+    fetch("/api/booking/availability/dates")
+      .then((r) => r.json())
+      .then((data) => setAvailableDates(new Set(data.dates ?? [])))
+      .finally(() => setDatesLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (!date) return
+    const iso = date.toISOString().split("T")[0]
+    setSlotsLoading(true)
+    setAvailableSlots([])
+    fetch(`/api/booking/availability/slots?date=${iso}`)
+      .then((r) => r.json())
+      .then((data) => setAvailableSlots(data.slots ?? []))
+      .finally(() => setSlotsLoading(false))
+  }, [date])
+
+  useEffect(() => {
+    if (info.place !== "domicile" || info.address.trim().length < 10) {
+      setTravelFee(null)
+      setTravelFeeError(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      setTravelFeeLoading(true)
+      setTravelFeeError(null)
+      try {
+        const res = await fetch(`/api/travel-fee?address=${encodeURIComponent(info.address.trim())}`)
+        const data = await res.json()
+        if (!res.ok) {
+          setTravelFeeError(data.error ?? "Adresse introuvable")
+          setTravelFee(null)
+        } else {
+          setTravelFee(data.feeInCents)
+        }
+      } catch {
+        setTravelFeeError("Erreur réseau")
+      } finally {
+        setTravelFeeLoading(false)
+      }
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [info.address, info.place])
+
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const maxDate = new Date(today); maxDate.setDate(today.getDate() + 60)
   const minMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -54,11 +123,6 @@ export default function BookingWizard({ serviceId }: Props) {
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1)
   const startOffset = (firstDayOfMonth.getDay() + 6) % 7
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
-
-  const slots = date ? TIME_SLOTS.map(t => {
-    const seed = (date.getDate() * 13 + parseInt(t)) % 7
-    return { time: t, taken: seed === 0 || seed === 3 }
-  }) : []
 
   function goTo(n: number) {
     setStep(n)
@@ -68,29 +132,53 @@ export default function BookingWizard({ serviceId }: Props) {
   function calcTotal() {
     if (!svc) return 0
     let t = svc.price
-    if (info.place === "domicile") t += 18
+    if (info.place === "domicile") t += Math.round((travelFee ?? 1800) / 100)
     if (firstTime && svc.id === "corps") t = Math.round(t * 0.8)
     return t
   }
 
-  function handleConfirm() {
-    setRefCode("BDV‑" + String(Math.floor(100000 + Math.random() * 900000)))
-    setConfetti(Array.from({ length: 28 }, () => ({
-      size: 6 + Math.random() * 14,
-      left: Math.random() * 100,
-      dur: 3 + Math.random() * 3,
-      delay: Math.random() * 1.5,
-      cx: (Math.random() * 200 - 100) | 0,
-    })))
-    setSuccess(true)
-    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50)
+  async function handleConfirm() {
+    if (!svc || !selectedSlotId) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch("/api/booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceSlug: svc.id,
+          slotId: selectedSlotId,
+          notes: info.note || null,
+          isFirstVisit: firstTime,
+          location: info.place,
+          clientAddress: info.place === "domicile" ? info.address : null,
+          travelFee: info.place === "domicile" ? (travelFee ?? 1800) : 0,
+          name: `${info.first} ${info.last}`.trim(),
+          email: info.email,
+          phone: info.phone || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSubmitError(data.error ?? "Erreur inattendue")
+        return
+      }
+      setRefCode(data.ref)
+      setSuccess(true)
+      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50)
+    } catch {
+      setSubmitError("Erreur réseau. Vérifiez votre connexion et réessayez.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const isInfoValid = !!(
     info.first.trim() &&
     info.last.trim() &&
     /\S+@\S+\.\S+/.test(info.email) &&
-    info.phone.trim().length >= 6
+    info.phone.trim().length >= 6 &&
+    (info.place !== "domicile" || info.address.trim().length >= 5)
   )
 
   if (success) {
@@ -99,21 +187,6 @@ export default function BookingWizard({ serviceId }: Props) {
         <div className="wrap">
           <div style={{ maxWidth: 780, margin: "0 auto", paddingBottom: 80 }}>
             <div className="success">
-              <div className="confetti" aria-hidden>
-                {confetti.map((c, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      width: c.size,
-                      height: c.size,
-                      left: `${c.left}%`,
-                      animationDuration: `${c.dur}s`,
-                      animationDelay: `${c.delay}s`,
-                      "--cx": `${c.cx}px`,
-                    } as React.CSSProperties}
-                  />
-                ))}
-              </div>
               <div className="check">✓</div>
               <span className="eyebrow" style={{ justifyContent: "center", display: "inline-flex" }}>Confirmation</span>
               <h2 style={{ marginTop: 14 }}>Votre bulle <span className="italic">est posée.</span></h2>
@@ -230,7 +303,9 @@ export default function BookingWizard({ serviceId }: Props) {
                   <div className="panel">
                     <span className="eyebrow">Étape 2</span>
                     <h2 style={{ marginTop: 12 }}>Choisissez <span className="italic">une date.</span></h2>
-                    <p className="panel-sub">Disponibilités du lundi au samedi. Le dimanche, la bulle se repose.</p>
+                    <p className="panel-sub">
+                      {datesLoading ? "Chargement des disponibilités…" : "Seules les dates avec des créneaux libres sont sélectionnables."}
+                    </p>
                     <div className="cal">
                       <div className="cal-head">
                         <div className="mname">{MONTHS[viewMonth]} {viewYear}</div>
@@ -262,7 +337,10 @@ export default function BookingWizard({ serviceId }: Props) {
                         {Array.from({ length: daysInMonth }, (_, i) => {
                           const day = i + 1
                           const d = new Date(viewYear, viewMonth, day)
-                          const disabled = d < today || d.getDay() === 0 || d > maxDate
+                          const isoDate = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+                          const pastOrFuture = d < today || d > maxDate
+                          const hasSlots = !datesLoading && availableDates.has(isoDate)
+                          const disabled = pastOrFuture || (!datesLoading && !hasSlots)
                           const isToday = d.getTime() === today.getTime()
                           const isSelected = date ? d.getTime() === date.getTime() : false
                           let cls = "cal-cell"
@@ -276,7 +354,7 @@ export default function BookingWizard({ serviceId }: Props) {
                             <div
                               key={day}
                               className={cls}
-                              onClick={() => { if (!disabled) { setDate(d); setTime(null) } }}
+                              onClick={() => { if (!disabled) { setDate(d); setTime(null); setSelectedSlotId(null) } }}
                             >
                               {day}
                             </div>
@@ -300,21 +378,28 @@ export default function BookingWizard({ serviceId }: Props) {
                     <h2 style={{ marginTop: 12 }}>À quelle heure <span className="italic">vous attendre ?</span></h2>
                     <p className="panel-sub">Les créneaux affichés sont disponibles pour la date choisie.</p>
                     <div className="slots">
-                      {slots.map(({ time: t, taken }) => (
+                      {slotsLoading && (
+                        <p style={{ color: "var(--mute)", fontStyle: "italic", gridColumn: "1/-1" }}>Chargement des créneaux…</p>
+                      )}
+                      {!slotsLoading && availableSlots.length === 0 && (
+                        <p style={{ color: "var(--mute)", fontStyle: "italic", gridColumn: "1/-1" }}>
+                          Aucun créneau disponible pour cette date. Essayez une autre journée.
+                        </p>
+                      )}
+                      {!slotsLoading && availableSlots.map((slot) => (
                         <button
-                          key={t}
-                          className={`slot${time === t ? " selected" : ""}`}
-                          disabled={taken}
-                          onClick={() => { if (!taken) setTime(t) }}
+                          key={slot.id}
+                          className={`slot${selectedSlotId === slot.id ? " selected" : ""}`}
+                          onClick={() => { setTime(slot.startTime); setSelectedSlotId(slot.id) }}
                         >
-                          <span>{t.replace(":", "h")}</span>
-                          <small>{taken ? "complet" : `${svc?.dur || 60} min`}</small>
+                          <span>{slot.startTime.replace(":", "h")}</span>
+                          <small>{svc?.dur || 60} min</small>
                         </button>
                       ))}
                     </div>
                     <div className="step-nav">
                       <button className="ghost" onClick={() => goTo(1)}>← Retour</button>
-                      <button className="btn primary" disabled={!time} onClick={() => time && goTo(3)}>
+                      <button className="btn primary" disabled={!selectedSlotId} onClick={() => selectedSlotId && goTo(3)}>
                         Continuer <span className="arrow">→</span>
                       </button>
                     </div>
@@ -375,6 +460,34 @@ export default function BookingWizard({ serviceId }: Props) {
                           <option value="domicile">À mon domicile (+18€ selon distance)</option>
                         </select>
                       </div>
+                      {info.place === "domicile" && (
+                        <div className="field full">
+                          <label>Votre adresse</label>
+                          <input
+                            type="text"
+                            value={info.address}
+                            onChange={e => setInfo(v => ({ ...v, address: e.target.value }))}
+                            placeholder="12 rue des Lilas, 69007 Lyon"
+                            autoComplete="street-address"
+                          />
+                          {travelFeeLoading && (
+                            <span className="hint" style={{ fontStyle: "italic" }}>Calcul du déplacement…</span>
+                          )}
+                          {!travelFeeLoading && travelFeeError && (
+                            <span className="hint" style={{ color: "var(--terra)" }}>{travelFeeError}</span>
+                          )}
+                          {!travelFeeLoading && !travelFeeError && travelFee !== null && (
+                            <span className="hint" style={{ color: "var(--terra)" }}>
+                              {travelFee === 0
+                                ? "Déplacement inclus — vous êtes dans la zone gratuite."
+                                : `Frais de déplacement : +${(travelFee / 100).toFixed(2).replace(".", ",")} €`}
+                            </span>
+                          )}
+                          {!travelFeeLoading && !travelFeeError && travelFee === null && info.address.trim().length < 10 && (
+                            <span className="hint">Saisissez votre adresse complète pour calculer les frais.</span>
+                          )}
+                        </div>
+                      )}
                       <div className="field full">
                         <label>Un mot pour préparer la séance ?</label>
                         <textarea
@@ -422,7 +535,8 @@ export default function BookingWizard({ serviceId }: Props) {
                         { label: "Heure", value: time ? time.replace(":", "h") : "—", editStep: 2 },
                         { label: "Vous", value: `${info.first} ${info.last}`, editStep: 3 },
                         { label: "Coordonnées", value: `${info.email} · ${info.phone}`, editStep: 3 },
-                        { label: "Lieu", value: info.place === "domicile" ? "À votre domicile" : "Au cabinet · Lyon 7ᵉ", editStep: 3 },
+                        { label: "Lieu", value: info.place === "domicile" ? `À domicile${info.address ? ` — ${info.address}` : ""}` : "Au cabinet · Lyon 7ᵉ", editStep: 3 },
+                        ...(info.place === "domicile" ? [{ label: "Déplacement", value: travelFee === null ? "À calculer" : travelFee === 0 ? "Gratuit" : `+${(travelFee / 100).toFixed(2).replace(".", ",")} €`, editStep: 3 }] : []),
                         ...(info.note ? [{ label: "Note", value: info.note, editStep: 3 }] : []),
                       ] as { label: string; value: string; editStep: number }[]).map(row => (
                         <div key={row.label} className="review-row">
@@ -434,10 +548,19 @@ export default function BookingWizard({ serviceId }: Props) {
                         </div>
                       ))}
                     </div>
+                    {submitError && (
+                      <div style={{
+                        background: "#FDECE2", border: "1px solid #F4C8AE",
+                        borderRadius: 10, padding: "12px 16px",
+                        color: "#8B4427", fontSize: 14, marginBottom: 16,
+                      }}>
+                        {submitError}
+                      </div>
+                    )}
                     <div className="step-nav">
                       <button className="ghost" onClick={() => goTo(3)}>← Retour</button>
-                      <button className="btn primary" onClick={handleConfirm}>
-                        Confirmer la réservation <span className="arrow">→</span>
+                      <button className="btn primary" onClick={handleConfirm} disabled={submitting}>
+                        {submitting ? "Confirmation en cours…" : <>Confirmer la réservation <span className="arrow">→</span></>}
                       </button>
                     </div>
                   </div>
@@ -466,6 +589,24 @@ export default function BookingWizard({ serviceId }: Props) {
                   </div>
                 ))}
               </div>
+              {info.place === "domicile" && svc && (
+                <div className="summary-row" style={{ borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 12 }}>
+                  <div>
+                    <div className="l">Déplacement</div>
+                    <div className="v" style={{ fontSize: 13 }}>
+                      {travelFeeLoading
+                        ? "Calcul…"
+                        : travelFeeError
+                        ? "—"
+                        : travelFee === null
+                        ? "Saisissez l'adresse"
+                        : travelFee === 0
+                        ? "Gratuit"
+                        : `+${(travelFee / 100).toFixed(2).replace(".", ",")} €`}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="summary-total">
                 <div className="l">Total</div>
                 <div className="v">{svc ? `${calcTotal()}€` : "—"}</div>
