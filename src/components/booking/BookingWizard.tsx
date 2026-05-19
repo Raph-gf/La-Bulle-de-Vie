@@ -80,9 +80,9 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
   return (
     <form onSubmit={handlePay}>
       {/* Step 2 — Mode de paiement */}
-      <div className="step">
-        <div className="step-head">
-          <div className="step-num">2</div>
+      <div className="co-step">
+        <div className="co-step-head">
+          <div className="co-step-num">2</div>
           <h2>Mode de paiement</h2>
           <span className="badge-secure">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -100,25 +100,25 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
       </div>
 
       {/* Step 3 — Adresse de facturation */}
-      <div className="step">
-        <div className="step-head">
-          <div className="step-num">3</div>
+      <div className="co-step">
+        <div className="co-step-head">
+          <div className="co-step-num">3</div>
           <h2>Adresse de facturation</h2>
         </div>
-        <div className="form-grid">
-          <div className="fld full">
+        <div className="co-form-grid">
+          <div className="co-fld full">
             <label>Adresse</label>
             <input type="text" placeholder="22 rue de la République" autoComplete="address-line1" />
           </div>
-          <div className="fld">
+          <div className="co-fld">
             <label>Code postal</label>
             <input type="text" placeholder="69002" autoComplete="postal-code" inputMode="numeric" />
           </div>
-          <div className="fld">
+          <div className="co-fld">
             <label>Ville</label>
             <input type="text" placeholder="Lyon" autoComplete="address-level2" />
           </div>
-          <div className="fld full">
+          <div className="co-fld full">
             <label>Pays</label>
             <select autoComplete="country-name">
               <option>France</option>
@@ -413,21 +413,21 @@ export default function BookingWizard({ serviceId, userData }: Props) {
             <div className="or-sep">ou payer par carte</div>
 
             {/* Step 1 — Vos coordonnées */}
-            <div className="step">
-              <div className="step-head">
-                <div className="step-num">1</div>
+            <div className="co-step">
+              <div className="co-step-head">
+                <div className="co-step-num">1</div>
                 <h2>Vos coordonnées</h2>
               </div>
-              <div className="form-grid">
-                <div className="fld">
+              <div className="co-form-grid">
+                <div className="co-fld">
                   <label>Prénom</label>
                   <input type="text" value={info.first} readOnly />
                 </div>
-                <div className="fld">
+                <div className="co-fld">
                   <label>Nom</label>
                   <input type="text" value={info.last} readOnly />
                 </div>
-                <div className="fld full">
+                <div className="co-fld full">
                   <label>E‑mail<span className="opt">— confirmation envoyée ici</span></label>
                   <input type="email" value={info.email} readOnly className="with-icon" />
                   <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -435,7 +435,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                   </svg>
                 </div>
                 {info.phone && (
-                  <div className="fld full">
+                  <div className="co-fld full">
                     <label>Téléphone<span className="opt">— pour le rappel SMS, optionnel</span></label>
                     <input type="tel" value={info.phone} readOnly className="with-icon" />
                     <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
