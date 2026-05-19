@@ -29,11 +29,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Service introuvable" }, { status: 400 })
     }
 
-    // Get logged-in user if any
+    // Get logged-in user if any — verify profile exists in DB (may not if signup trigger not yet set up)
     let clientId: string | undefined
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) clientId = user.id
+    if (user) {
+      const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { id: true } })
+      if (profile) clientId = user.id
+    }
 
     // Verify slot is still free
     const slot = await prisma.availabilitySlot.findUnique({ where: { id: slotId } })

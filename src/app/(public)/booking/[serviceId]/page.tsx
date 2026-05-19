@@ -10,13 +10,17 @@ export default async function BookingPage({ params }: { params: Promise<{ servic
 
   let userData = null
   if (user) {
-    const profile = await prisma.profile.findUnique({
+    const profile = await prisma.profile.upsert({
       where: { id: user.id },
+      update: {},
+      create: {
+        id: user.id,
+        fullName: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Client",
+        role: "client",
+      },
       select: { fullName: true, phone: true },
     })
-    if (profile) {
-      userData = { fullName: profile.fullName, email: user.email ?? "", phone: profile.phone ?? "" }
-    }
+    userData = { fullName: profile.fullName, email: user.email ?? "", phone: profile.phone ?? "" }
   }
 
   return <BookingWizard serviceId={serviceId} userData={userData} />
