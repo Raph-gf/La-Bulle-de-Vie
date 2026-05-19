@@ -3,9 +3,23 @@ import { prisma } from "@/lib/prisma"
 import { geocode, haversineKm, computeTravelFee, TravelPricing, DEFAULT_TRAVEL_PRICING } from "@/lib/geo"
 
 export async function GET(req: NextRequest) {
-  const address = req.nextUrl.searchParams.get("address")
-  if (!address || address.trim().length < 5) {
-    return NextResponse.json({ error: "Adresse trop courte" }, { status: 400 })
+  const params = req.nextUrl.searchParams
+  const rawLat = params.get("lat")
+  const rawLng = params.get("lng")
+  const address = params.get("address")
+
+  // Prefer exact coordinates (from BAN autocomplete) — skip geocoding entirely
+  let clientCoords: { lat: number; lng: number } | null = null
+  if (rawLat && rawLng) {
+    const lat = parseFloat(rawLat)
+    const lng = parseFloat(rawLng)
+    if (isFinite(lat) && isFinite(lng)) clientCoords = { lat, lng }
+  }
+
+  if (!clientCoords) {
+    if (!address || address.trim().length < 5) {
+      return NextResponse.json({ error: "Adresse trop courte" }, { status: 400 })
+    }
   }
 
   try {
@@ -19,12 +33,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ feeInCents: 1800, distanceKm: null })
     }
 
-    const coords = await geocode(address.trim())
-    if (!coords) {
-      return NextResponse.json({ error: "Adresse introuvable — vérifiez la saisie." }, { status: 422 })
+    if (!clientCoords) {
+      clientCoords = await geocode(address!.trim())
+      if (!clientCoords) {
+        return NextResponse.json({ error: "Adresse introuvable — vérifiez la saisie." }, { status: 422 })
+      }
     }
 
-    const distanceKm = haversineKm(profile.cabinetLat, profile.cabinetLng, coords.lat, coords.lng)
+    const distanceKm = haversineKm(profile.cabinetLat, profile.cabinetLng, clientCoords.lat, clientCoords.lng)
     const pricing = (profile.travelPricing as TravelPricing | null) ?? DEFAULT_TRAVEL_PRICING
     const feeInCents = computeTravelFee(distanceKm, pricing)
 

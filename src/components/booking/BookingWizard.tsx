@@ -11,6 +11,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js"
 import { SOINS, SoinId } from "@/lib/soins"
+import AddressAutocomplete from "@/components/booking/AddressAutocomplete"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -123,6 +124,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
   const [travelFee, setTravelFee] = useState<number | null>(null)
   const [travelFeeLoading, setTravelFeeLoading] = useState(false)
   const [travelFeeError, setTravelFeeError] = useState<string | null>(null)
+  const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     const id = serviceId as SoinId | undefined
@@ -164,31 +166,26 @@ export default function BookingWizard({ serviceId, userData }: Props) {
   }, [date])
 
   useEffect(() => {
-    if (info.place !== "domicile" || info.address.trim().length < 10) {
+    if (info.place !== "domicile" || !addressCoords) {
       setTravelFee(null)
       setTravelFeeError(null)
       return
     }
-    const timer = setTimeout(async () => {
-      setTravelFeeLoading(true)
-      setTravelFeeError(null)
-      try {
-        const res = await fetch(`/api/travel-fee?address=${encodeURIComponent(info.address.trim())}`)
+    setTravelFeeLoading(true)
+    setTravelFeeError(null)
+    fetch(`/api/travel-fee?lat=${addressCoords.lat}&lng=${addressCoords.lng}`)
+      .then(async (res) => {
         const data = await res.json()
         if (!res.ok) {
-          setTravelFeeError(data.error ?? "Adresse introuvable")
+          setTravelFeeError(data.error ?? "Zone non desservie")
           setTravelFee(null)
         } else {
           setTravelFee(data.feeInCents)
         }
-      } catch {
-        setTravelFeeError("Erreur réseau")
-      } finally {
-        setTravelFeeLoading(false)
-      }
-    }, 800)
-    return () => clearTimeout(timer)
-  }, [info.address, info.place])
+      })
+      .catch(() => setTravelFeeError("Erreur réseau"))
+      .finally(() => setTravelFeeLoading(false))
+  }, [addressCoords, info.place])
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const maxDate = new Date(today); maxDate.setDate(today.getDate() + 60)
@@ -253,7 +250,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     info.last.trim() &&
     /\S+@\S+\.\S+/.test(info.email) &&
     info.phone.trim().length >= 6 &&
-    (info.place !== "domicile" || info.address.trim().length >= 5)
+    (info.place !== "domicile" || addressCoords !== null)
   )
 
   if (success) {
@@ -537,12 +534,17 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                       {info.place === "domicile" && (
                         <div className="field full">
                           <label>Votre adresse</label>
-                          <input
-                            type="text"
+                          <AddressAutocomplete
                             value={info.address}
-                            onChange={e => setInfo(v => ({ ...v, address: e.target.value }))}
-                            placeholder="12 rue des Lilas, 69007 Lyon"
-                            autoComplete="street-address"
+                            onChange={(raw) => {
+                              setInfo(v => ({ ...v, address: raw }))
+                              setAddressCoords(null)
+                              setTravelFee(null)
+                            }}
+                            onSelect={(label, lat, lng) => {
+                              setInfo(v => ({ ...v, address: label }))
+                              setAddressCoords({ lat, lng })
+                            }}
                           />
                           {travelFeeLoading && (
                             <span className="hint" style={{ fontStyle: "italic" }}>Calcul du déplacement…</span>
@@ -557,8 +559,8 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                                 : `Frais de déplacement : +${(travelFee / 100).toFixed(2).replace(".", ",")} €`}
                             </span>
                           )}
-                          {!travelFeeLoading && !travelFeeError && travelFee === null && info.address.trim().length < 10 && (
-                            <span className="hint">Saisissez votre adresse complète pour calculer les frais.</span>
+                          {!travelFeeLoading && !travelFeeError && travelFee === null && !addressCoords && (
+                            <span className="hint">Commencez à saisir votre adresse et choisissez dans la liste.</span>
                           )}
                         </div>
                       )}
