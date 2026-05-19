@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Service introuvable" }, { status: 400 })
     }
 
-    // Get logged-in user if any — verify profile exists in DB (may not if signup trigger not yet set up)
+    // Get logged-in user if any
     let clientId: string | undefined
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       if (profile) clientId = user.id
     }
 
-    // Verify slot is still free
+    // Verify slot is still free (read-only check — not locked yet)
     const slot = await prisma.availabilitySlot.findUnique({ where: { id: slotId } })
     if (!slot || slot.isBooked) {
       return NextResponse.json(
@@ -47,10 +47,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Server-side price calculation — never trust client amount
+    // Server-side price calculation
     let amountInCents = service.price
 
-    // Travel fee: fetch from specialist settings if domicile
     let travelFeeInCents = 0
     if (location === "domicile") {
       const profile = await prisma.profile.findFirst({
@@ -60,15 +59,13 @@ export async function POST(req: NextRequest) {
       if (profile?.travelPricing) {
         const pricing = profile.travelPricing as { type?: string; zones?: { maxKm: number; feeInCents: number }[] }
         if (pricing.type === "zones" && Array.isArray(pricing.zones) && pricing.zones.length > 0) {
-          // Default to first zone fee when address geocoding isn't done at this step
           travelFeeInCents = pricing.zones[0]?.feeInCents ?? 1800
         }
       } else {
-        travelFeeInCents = 1800 // fallback 18€
+        travelFeeInCents = 1800
       }
     }
 
-    // First-visit discount: -20% on the service price only (not on travel fee)
     let discountAmount = 0
     if (isFirstVisit) {
       discountAmount = Math.round(service.price * 0.2)
@@ -76,13 +73,10 @@ export async function POST(req: NextRequest) {
     }
 
     amountInCents += travelFeeInCents
-
-    // Stripe minimum is 50 cents
     if (amountInCents < 50) amountInCents = 50
 
-    const ref = `BDV-` // will be completed after appointment creation
-
-    // Create PaymentIntent before the appointment so we have the ID
+    // Create PaymentIntent — appointment is NOT created yet.
+    // The webhook (payment_intent.succeeded) will create the appointment + lock the slot.
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: "eur",
@@ -90,66 +84,29 @@ export async function POST(req: NextRequest) {
       metadata: {
         slotId,
         serviceId: service.id,
+        clientId: clientId ?? "",
         clientEmail: email,
-        location,
+        clientName: name,
+        clientPhone: phone ?? "",
+        location: location ?? "cabinet",
+        clientAddress: (clientAddress ?? "").slice(0, 490),
+        notes: (notes ?? "").slice(0, 490),
+        isFirstVisit: String(isFirstVisit ?? false),
+        travelFeeInCents: String(travelFeeInCents),
+        discountAmount: String(discountAmount),
       },
     })
 
-    // Atomic: mark slot booked + create appointment
-    const appointment = await prisma.$transaction(async (tx) => {
-      await tx.availabilitySlot.update({
-        where: { id: slotId },
-        data: { isBooked: true },
-      })
-      return tx.appointment.create({
-        data: {
-          clientId: clientId ?? null,
-          serviceId: service.id,
-          slotId,
-          notes: notes ?? null,
-          isFirstVisit: isFirstVisit ?? false,
-          location: location ?? "cabinet",
-          clientAddress: clientAddress ?? null,
-          travelFee: travelFeeInCents,
-          discountAmount,
-          amountPaid: amountInCents,
-          stripePaymentIntentId: paymentIntent.id,
-          guestName: clientId ? null : name,
-          guestEmail: clientId ? null : email,
-          guestPhone: clientId ? null : (phone ?? null),
-          status: "pending",
-        },
-        select: { id: true },
-      })
-    })
+    // Ref is based on the PaymentIntent ID (appointment doesn't exist yet)
+    const ref = `BDV-${paymentIntent.id.slice(-6).toUpperCase()}`
 
-    // Update PaymentIntent metadata with the real appointment ID
-    await stripe.paymentIntents.update(paymentIntent.id, {
-      metadata: {
-        slotId,
-        serviceId: service.id,
-        appointmentId: appointment.id,
-        clientEmail: email,
-        location,
-      },
-    })
-
-    const bookingRef = `BDV-${appointment.id.slice(0, 6).toUpperCase()}`
     return NextResponse.json({
       ok: true,
-      appointmentId: appointment.id,
-      ref: bookingRef,
+      ref,
       clientSecret: paymentIntent.client_secret,
       amountInCents,
     })
   } catch (err: unknown) {
-    // Unique constraint on slotId — two users hit the same slot simultaneously
-    if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2002") {
-      return NextResponse.json(
-        { error: "Ce créneau vient d'être pris. Veuillez en choisir un autre." },
-        { status: 409 }
-      )
-    }
     console.error("[booking] POST error:", err)
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }

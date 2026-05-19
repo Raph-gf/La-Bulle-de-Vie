@@ -265,9 +265,16 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     return t
   }
 
-  // Step 4 → 5: create appointment + PaymentIntent on the server
+  // Step 4 → 5: create PaymentIntent on the server (appointment created by webhook on success)
   async function handleProceedToPayment() {
     if (!svc || !selectedSlotId) return
+
+    // Already have a PaymentIntent from a previous attempt — reuse it, don't call API again
+    if (clientSecret) {
+      goTo(5)
+      return
+    }
+
     setSubmitting(true)
     setSubmitError(null)
     try {
