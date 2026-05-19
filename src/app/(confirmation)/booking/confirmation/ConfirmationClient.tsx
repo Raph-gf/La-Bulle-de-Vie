@@ -394,7 +394,7 @@ export default function ConfirmationClient() {
           </div>
 
           {/* Check circle */}
-          <div className="check-wrap" style={{ marginBottom: 40 }}>
+          <div className="check-wrap" style={{ marginBottom: 28 }}>
             <div className="check-rings">
               <span /><span /><span />
             </div>
@@ -403,6 +403,10 @@ export default function ConfirmationClient() {
                 <path d="M5 13l4 4L19 7" />
               </svg>
             </div>
+          </div>
+
+          <div className="ok-head">
+            <span className="ok-eyebrow">Réservation confirmée</span>
           </div>
 
           <h1 className="ok-title">
@@ -492,7 +496,8 @@ export default function ConfirmationClient() {
             <div className="conf-booking">
               <div className="booking-main">
                 <h2>{data.serviceName}</h2>
-                <p style={{ color: "var(--mute)", fontSize: 15, marginBottom: 28, fontStyle: "italic" }}>
+                <p className="booking-with">Avec La Bulle De Vie</p>
+                <p style={{ color: "var(--mute)", fontSize: 14, marginBottom: 28, fontStyle: "italic" }}>
                   {data.serviceDur} min
                 </p>
                 <div className="info-list">

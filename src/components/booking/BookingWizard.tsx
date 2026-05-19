@@ -7,9 +7,11 @@ import { loadStripe } from "@stripe/stripe-js"
 import {
   Elements,
   PaymentElement,
+  ExpressCheckoutElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js"
+import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js"
 import { SOINS, SoinId } from "@/lib/soins"
 import AddressAutocomplete from "@/components/booking/AddressAutocomplete"
 
@@ -49,6 +51,7 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
   const elements = useElements()
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
+  const [expressAvailable, setExpressAvailable] = useState(false)
 
   async function handlePay(e: React.FormEvent) {
     e.preventDefault()
@@ -75,10 +78,48 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
     }
   }
 
+  async function handleExpressConfirm(event: StripeExpressCheckoutElementConfirmEvent) {
+    if (!stripe || !elements) {
+      event.paymentFailed({ reason: "fail" })
+      return
+    }
+    setPaying(true)
+    setPayError(null)
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+      confirmParams: {
+        return_url: `${window.location.origin}/booking/confirmation?ref=${refCode}`,
+      },
+    })
+
+    if (error) {
+      event.paymentFailed({ reason: "fail" })
+      setPayError(error.message ?? "Le paiement a échoué.")
+      setPaying(false)
+    } else if (paymentIntent?.status === "succeeded") {
+      onSuccess()
+    }
+  }
+
   const fmtAmount = (amountInCents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
 
   return (
     <form onSubmit={handlePay}>
+      {/* Express Checkout (Apple Pay / Google Pay) — auto-hides when unsupported */}
+      <ExpressCheckoutElement
+        onReady={({ availablePaymentMethods }) => {
+          setExpressAvailable(availablePaymentMethods !== undefined)
+        }}
+        onConfirm={handleExpressConfirm}
+        options={{
+          buttonType: { applePay: "plain", googlePay: "plain" },
+          layout: { maxColumns: 2, maxRows: 1, overflow: "never" },
+        }}
+      />
+      {expressAvailable && <div className="or-sep">ou payer par carte</div>}
+
       {/* Step 2 — Mode de paiement */}
       <div className="co-step">
         <div className="co-step-head">
@@ -401,26 +442,6 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               <h1>Régler <span className="italic">votre séance.</span></h1>
               <p className="sub">Paiement 100 % sécurisé via Stripe — vos données ne transitent jamais par nos serveurs.</p>
             </div>
-
-            {/* Express checkout */}
-            <div className="express">
-              <button type="button" className="btn-apple">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.05 12.06c-.03-2.7 2.2-4 2.3-4.07-1.26-1.83-3.21-2.08-3.9-2.11-1.66-.17-3.24.97-4.08.97-.85 0-2.15-.95-3.54-.92-1.82.03-3.5 1.06-4.43 2.69-1.89 3.27-.48 8.1 1.36 10.77.9 1.3 1.97 2.76 3.36 2.7 1.36-.05 1.87-.87 3.51-.87 1.64 0 2.1.87 3.54.84 1.46-.02 2.39-1.32 3.28-2.62 1.04-1.5 1.47-2.96 1.49-3.03-.03-.01-2.86-1.1-2.89-4.35zM14.4 4.36c.75-.9 1.25-2.16 1.11-3.41-1.07.04-2.37.71-3.14 1.61-.69.8-1.3 2.08-1.13 3.31 1.2.09 2.42-.6 3.16-1.51z"/>
-                </svg>
-                Pay
-              </button>
-              <button type="button" className="btn-google-pay">
-                <svg width="20" height="20" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC04"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Pay
-              </button>
-            </div>
-            <div className="or-sep">ou payer par carte</div>
 
             {/* Step 1 — Vos coordonnées */}
             <div className="co-step">
