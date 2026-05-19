@@ -1,11 +1,12 @@
 "use client"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "motion/react"
 
 type BookingData = {
   ref: string
+  paymentIntentId?: string
   serviceName: string
   serviceDur: number
   date: string
@@ -20,6 +21,8 @@ type BookingData = {
   travelFee: number | null
   isFirstTime: boolean
 }
+
+type PageStatus = "loading" | "confirmed" | "refunded"
 
 const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
 
@@ -64,7 +67,7 @@ function googleCalUrl(data: BookingData): string {
   return `https://calendar.google.com/calendar/render?${p.toString()}`
 }
 
-// Ambient bubbles config (fixed per render)
+// Ambient bubbles (stable across renders)
 const AMBIENT = Array.from({ length: 12 }, (_, i) => ({
   size: 28 + (i * 17) % 60,
   left: (i * 8.3 + 5) % 100,
@@ -73,7 +76,7 @@ const AMBIENT = Array.from({ length: 12 }, (_, i) => ({
   dx: ((i % 4) - 1.5) * 28,
 }))
 
-// Confetti config (fixed per render)
+// Confetti (stable across renders)
 const CONFETTI = Array.from({ length: 22 }, (_, i) => ({
   angle: (360 / 22) * i + (i % 3) * 8 - 4,
   dist: 100 + (i % 5) * 30,
@@ -82,20 +85,162 @@ const CONFETTI = Array.from({ length: 22 }, (_, i) => ({
   color: i % 3 === 0 ? "#D89175" : i % 3 === 1 ? "#F5C5A3" : "#E8DDD5",
 }))
 
+// ── Loading screen ───────────────────────────────────────────────────
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(160deg, #F9F2EB 0%, #F1E6D8 50%, #EBD9C6 100%)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 24,
+    }}>
+      <div style={{
+        width: 56,
+        height: 56,
+        borderRadius: "50%",
+        border: "3px solid #E8DDD5",
+        borderTopColor: "#D89175",
+        animation: "spin 0.9s linear infinite",
+      }} />
+      <p style={{ fontFamily: "var(--serif)", fontSize: 20, fontStyle: "italic", color: "var(--ink)", opacity: 0.7 }}>
+        Confirmation de votre réservation…
+      </p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  )
+}
+
+// ── Refund error screen ──────────────────────────────────────────────
+function RefundedScreen({ data }: { data: BookingData | null }) {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(160deg, #F9F2EB 0%, #F1E6D8 50%, #EBD9C6 100%)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px 24px",
+    }}>
+      {/* Icon */}
+      <div style={{
+        width: 76,
+        height: 76,
+        borderRadius: "50%",
+        background: "#FDF0EB",
+        border: "2px solid #F4C8AE",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 32,
+        fontSize: 32,
+      }}>
+        ⏱
+      </div>
+
+      <div style={{ maxWidth: 520, textAlign: "center" }}>
+        <span style={{
+          display: "inline-block",
+          fontSize: 11,
+          letterSpacing: ".22em",
+          textTransform: "uppercase",
+          color: "var(--mute)",
+          marginBottom: 16,
+        }}>
+          Créneau non disponible
+        </span>
+
+        <h1 style={{
+          fontFamily: "var(--serif)",
+          fontSize: "clamp(32px, 5vw, 52px)",
+          lineHeight: 1.05,
+          fontWeight: 400,
+          marginBottom: 20,
+        }}>
+          Ce créneau vient<br />
+          <span style={{ fontStyle: "italic", color: "var(--terra)" }}>d'être pris.</span>
+        </h1>
+
+        <p style={{ color: "var(--mute)", fontSize: 16, lineHeight: 1.65, marginBottom: 12 }}>
+          Une autre réservation a été confirmée sur ce créneau au même moment que la vôtre.
+          Votre paiement a été intégralement remboursé — aucun montant ne sera débité.
+        </p>
+
+        {data && (
+          <p style={{ color: "var(--mute)", fontSize: 14, marginBottom: 36 }}>
+            Le remboursement de{" "}
+            <strong style={{ color: "var(--ink)" }}>
+              {(data.amountInCents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+            </strong>{" "}
+            apparaîtra sur votre relevé bancaire sous 3 à 5 jours ouvrés.
+          </p>
+        )}
+
+        {/* Info box */}
+        <div style={{
+          background: "#fff8f5",
+          border: "1px solid #F4C8AE",
+          borderRadius: 14,
+          padding: "20px 24px",
+          marginBottom: 36,
+          textAlign: "left",
+          display: "flex",
+          gap: 14,
+          alignItems: "flex-start",
+        }}>
+          <span style={{ color: "var(--terra)", fontSize: 20, lineHeight: 1, flexShrink: 0 }}>ℹ</span>
+          <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6, margin: 0 }}>
+            Retournez sur la page de réservation pour choisir un autre créneau disponible.
+            Vos informations personnelles seront pré-remplies.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/booking" className="btn primary">
+            Choisir un autre créneau <span className="arrow">→</span>
+          </Link>
+          <Link href="/" className="btn" style={{ opacity: 0.75 }}>
+            Retour à l'accueil
+          </Link>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <p style={{ marginTop: 48, fontSize: 12, color: "var(--mute)" }}>
+        Une question ?{" "}
+        <a href="mailto:contact@labulldevie.fr" style={{ color: "var(--terra)", textDecoration: "none" }}>
+          contact@labulldevie.fr
+        </a>
+      </p>
+    </div>
+  )
+}
+
+// ── Main component ───────────────────────────────────────────────────
 export default function ConfirmationClient() {
   const params = useSearchParams()
   const [data, setData] = useState<BookingData | null>(null)
   const [ref, setRef] = useState("")
   const [copied, setCopied] = useState(false)
+  const [status, setStatus] = useState<PageStatus>("loading")
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const attemptsRef = useRef(0)
+  const MAX_ATTEMPTS = 8 // ~12 seconds (every 1.5s)
 
   useEffect(() => {
     const urlRef = params.get("ref") ?? ""
+    let piId = ""
+
     try {
       const raw = sessionStorage.getItem("booking_confirmation")
       if (raw) {
         const parsed = JSON.parse(raw) as BookingData
         setData(parsed)
         setRef(parsed.ref || urlRef)
+        piId = parsed.paymentIntentId ?? ""
         sessionStorage.removeItem("booking_confirmation")
       } else {
         setRef(urlRef)
@@ -103,6 +248,43 @@ export default function ConfirmationClient() {
     } catch {
       setRef(urlRef)
     }
+
+    if (!piId) {
+      // No PI ID to check — assume confirmed (direct URL visit)
+      setStatus("confirmed")
+      return
+    }
+
+    // Poll until webhook confirms or refunds
+    async function checkStatus() {
+      attemptsRef.current += 1
+      try {
+        const res = await fetch(`/api/booking/status?pi=${piId}`)
+        const json = await res.json() as { status: string }
+
+        if (json.status === "confirmed") {
+          clearInterval(pollRef.current!)
+          setStatus("confirmed")
+        } else if (json.status === "refunded") {
+          clearInterval(pollRef.current!)
+          setStatus("refunded")
+        } else if (attemptsRef.current >= MAX_ATTEMPTS) {
+          // Webhook very delayed — assume confirmed (optimistic)
+          clearInterval(pollRef.current!)
+          setStatus("confirmed")
+        }
+      } catch {
+        if (attemptsRef.current >= MAX_ATTEMPTS) {
+          clearInterval(pollRef.current!)
+          setStatus("confirmed")
+        }
+      }
+    }
+
+    checkStatus() // immediate first check
+    pollRef.current = setInterval(checkStatus, 1500)
+
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [params])
 
   const copyRef = useCallback(() => {
@@ -124,6 +306,10 @@ export default function ConfirmationClient() {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  // ── Render states ──────────────────────────────────────────────────
+  if (status === "loading") return <LoadingScreen />
+  if (status === "refunded") return <RefundedScreen data={data} />
 
   const totalEur = data ? Math.round(data.amountInCents / 100) : 0
   const travelFeeEur = data?.travelFee ? Math.round(data.travelFee / 100) : 0
@@ -219,7 +405,6 @@ export default function ConfirmationClient() {
             </div>
           </div>
 
-          {/* Word-by-word title */}
           <h1 className="ok-title">
             <span className="word"><span>Votre bulle</span></span>{" "}
             <span className="word"><span>est</span></span>{" "}
@@ -305,7 +490,6 @@ export default function ConfirmationClient() {
             </div>
 
             <div className="conf-booking">
-              {/* Left — booking details */}
               <div className="booking-main">
                 <h2>{data.serviceName}</h2>
                 <p style={{ color: "var(--mute)", fontSize: 15, marginBottom: 28, fontStyle: "italic" }}>
@@ -389,7 +573,6 @@ export default function ConfirmationClient() {
                 </div>
               </div>
 
-              {/* Right — receipt */}
               <div className="booking-side">
                 <h4>Détail du paiement</h4>
                 <div className="receipt">
@@ -465,7 +648,6 @@ export default function ConfirmationClient() {
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="ok-foot">
           <p>
             <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>

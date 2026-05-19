@@ -302,8 +302,11 @@ export default function BookingWizard({ serviceId, userData }: Props) {
       setClientSecret(data.clientSecret)
       setAmountInCents(data.amountInCents)
       // Save booking data so confirmation page can display details
+      // Extract PI ID from clientSecret (format: pi_xxx_secret_yyy)
+      const paymentIntentId = (data.clientSecret as string).split("_secret_")[0]
       sessionStorage.setItem("booking_confirmation", JSON.stringify({
         ref: data.ref,
+        paymentIntentId,
         serviceName: svc.name,
         serviceDur: svc.dur,
         date: date?.toISOString().split("T")[0] ?? "",
