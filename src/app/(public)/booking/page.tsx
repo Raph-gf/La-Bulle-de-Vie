@@ -8,17 +8,15 @@ export default async function BookingPage() {
 
   let userData = null
   if (user) {
+    const metaName = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Client"
+    const metaPhone = user.user_metadata?.phone ?? null
     const profile = await prisma.profile.upsert({
       where: { id: user.id },
-      update: {},
-      create: {
-        id: user.id,
-        fullName: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Client",
-        role: "client",
-      },
+      update: { phone: { set: metaPhone } },
+      create: { id: user.id, fullName: metaName, phone: metaPhone, role: "client" },
       select: { fullName: true, phone: true },
     })
-    userData = { fullName: profile.fullName, email: user.email ?? "", phone: profile.phone ?? "" }
+    userData = { fullName: profile.fullName, email: user.email ?? "", phone: profile.phone ?? metaPhone ?? "" }
   }
 
   return <BookingWizard userData={userData} />

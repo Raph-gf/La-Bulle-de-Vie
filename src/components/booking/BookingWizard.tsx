@@ -37,14 +37,14 @@ interface Props {
   userData?: UserData | null
 }
 
-// ── Stripe payment form (mounted inside <Elements>) ──────────────────
-interface PaymentFormProps {
+// ── Stripe inner form (must be inside <Elements>) ───────────────────
+interface StripePaymentBlockProps {
   amountInCents: number
   refCode: string
   onSuccess: () => void
 }
 
-function PaymentForm({ amountInCents, refCode, onSuccess }: PaymentFormProps) {
+function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePaymentBlockProps) {
   const stripe = useStripe()
   const elements = useElements()
   const [paying, setPaying] = useState(false)
@@ -75,26 +75,43 @@ function PaymentForm({ amountInCents, refCode, onSuccess }: PaymentFormProps) {
     }
   }
 
+  const fmtAmount = (amountInCents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+
   return (
     <form onSubmit={handlePay}>
-      <PaymentElement options={{ layout: "tabs" }} />
+      {/* Block 2 — Mode de paiement */}
+      <div className="pay-block">
+        <div className="pay-block-head">
+          <div className="pay-block-num">2</div>
+          <h2>Mode de paiement</h2>
+          <span className="badge-secure">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+            </svg>
+            SSL · 256 bits
+          </span>
+        </div>
+        <PaymentElement options={{ layout: "tabs" }} />
+      </div>
+
       {payError && (
-        <div style={{
-          background: "#FDECE2", border: "1px solid #F4C8AE",
-          borderRadius: 10, padding: "12px 16px",
-          color: "#8B4427", fontSize: 14, marginTop: 16,
-        }}>
+        <div style={{ background: "#FDECE2", border: "1px solid #F4C8AE", borderRadius: 10, padding: "12px 16px", color: "#8B4427", fontSize: 14, marginBottom: 16 }}>
           {payError}
         </div>
       )}
-      <div className="step-nav" style={{ marginTop: 24 }}>
-        <div />
-        <button type="submit" className="btn primary" disabled={!stripe || paying}>
-          {paying
-            ? "Paiement en cours…"
-            : <>Payer {(amountInCents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} <span className="arrow">→</span></>}
-        </button>
-      </div>
+
+      <button type="submit" className="pay-btn-main" disabled={!stripe || paying}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width={16} height={16}>
+          <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+        </svg>
+        <span>{paying ? "Paiement en cours…" : <>Payer <strong>{fmtAmount}</strong></>}</span>
+        {!paying && <span className="arrow">→</span>}
+      </button>
+
+      <p className="pay-legal">
+        En cliquant sur "Payer", vous acceptez nos CGV et notre politique de confidentialité.
+        Vos données bancaires sont traitées par <strong style={{ color: "var(--ink)", fontWeight: 500 }}>Stripe</strong>, jamais stockées par nos serveurs.
+      </p>
     </form>
   )
 }
@@ -252,6 +269,200 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     info.phone.trim().length >= 6 &&
     (info.place !== "domicile" || addressCoords !== null)
   )
+
+  // ── Step 5: full-page checkout layout ──────────────────────────────
+  if (step === 5 && clientSecret && !success) {
+    const servicePrice = svc ? svc.price : 0
+    const travelFeeEur = travelFee ? travelFee / 100 : 0
+    const discountEur = firstTime ? Math.round(servicePrice * 0.2) : 0
+    const totalEur = amountInCents / 100
+
+    function fmtDateLong(d: Date | null) {
+      if (!d) return "—"
+      const dow = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"][d.getDay()]
+      return `${dow} ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()} ${d.getFullYear()}`
+    }
+
+    return (
+      <div style={{ background: "var(--paper)", minHeight: "100vh" }}>
+        {/* Minimal top bar */}
+        <header className="co-top">
+          <div className="co-top-inner">
+            <button className="co-back" onClick={() => goTo(4)}>
+              <span className="arr">←</span>
+              Retour à la réservation
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--serif)", fontSize: 18, fontStyle: "italic" }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #fff, var(--terra) 70%)", boxShadow: "0 0 12px var(--terra-soft)", flexShrink: 0 }} />
+              La bulle de vie
+            </div>
+            <div className="co-secure">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+              </svg>
+              Paiement sécurisé · Stripe
+            </div>
+          </div>
+        </header>
+
+        <div className="checkout">
+          {/* ── LEFT: form ── */}
+          <section>
+            <div className="co-head">
+              <span className="eyebrow">Étape finale</span>
+              <h1>Régler <span className="italic">votre séance.</span></h1>
+              <p className="co-sub">Paiement 100 % sécurisé via Stripe — vos données ne transitent jamais par nos serveurs.</p>
+            </div>
+
+            {/* Block 1 — Vos coordonnées */}
+            <div className="pay-block">
+              <div className="pay-block-head">
+                <div className="pay-block-num">1</div>
+                <h2>Vos coordonnées</h2>
+              </div>
+              <div className="co-form-grid">
+                <div className="co-fld">
+                  <label>Prénom</label>
+                  <input type="text" value={info.first} readOnly />
+                </div>
+                <div className="co-fld">
+                  <label>Nom</label>
+                  <input type="text" value={info.last} readOnly />
+                </div>
+                <div className="co-fld full">
+                  <label>E‑mail <span style={{ fontStyle: "italic", fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--mute)", fontSize: 11 }}>— confirmation envoyée ici</span></label>
+                  <input type="email" value={info.email} readOnly />
+                </div>
+                {info.phone && (
+                  <div className="co-fld full">
+                    <label>Téléphone</label>
+                    <input type="tel" value={info.phone} readOnly />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Block 2 + submit — Stripe Elements */}
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: "stripe",
+                  variables: {
+                    colorPrimary: "#D89175",
+                    colorBackground: "#ffffff",
+                    colorText: "#1C1C1C",
+                    colorTextPlaceholder: "#9e9181",
+                    fontFamily: "Manrope, sans-serif",
+                    borderRadius: "10px",
+                    spacingUnit: "4px",
+                  },
+                  rules: {
+                    ".Input": { border: "1px solid #e8ddd5", boxShadow: "none", padding: "14px 16px", fontSize: "15px" },
+                    ".Input:focus": { border: "1px solid #1C1C1C", boxShadow: "0 0 0 4px #2218120c" },
+                    ".Tab": { border: "1.5px solid #e8ddd5", borderRadius: "10px" },
+                    ".Tab--selected": { border: "1.5px solid #1C1C1C", boxShadow: "0 0 0 4px #2218120c" },
+                    ".Label": { fontSize: "11px", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: "500", color: "#9e9181" },
+                  },
+                },
+              }}
+            >
+              <StripePaymentBlock
+                amountInCents={amountInCents}
+                refCode={refCode}
+                onSuccess={() => setSuccess(true)}
+              />
+            </Elements>
+          </section>
+
+          {/* ── RIGHT: order summary ── */}
+          <aside className="co-summary">
+            <h3>Votre commande</h3>
+            <p className="co-sub">{fmtDateLong(date)}{time ? ` · ${time.replace(":", "h")}` : ""}</p>
+
+            {/* Service item */}
+            {svc && (
+              <div className="order-item">
+                <div className="order-thumb">❋</div>
+                <div className="order-info">
+                  <div className="order-nm">{svc.name}</div>
+                  <div className="order-det">{svc.dur} min</div>
+                  <div className="order-meta">
+                    <span className="order-meta-pill">{info.place === "domicile" ? "À domicile" : "Cabinet Lyon 7ᵉ"}</span>
+                    {firstTime && <span className="order-meta-pill" style={{ color: "var(--terra)" }}>1ère visite</span>}
+                  </div>
+                </div>
+                <div className="order-price">{servicePrice} €</div>
+              </div>
+            )}
+
+            {/* Promo code (UI only for now) */}
+            <div className="promo-row">
+              <input type="text" placeholder="Code promo" maxLength={16} style={{ textTransform: "uppercase" }} />
+              <button type="button">Appliquer</button>
+            </div>
+
+            {/* Totals */}
+            <div className="total-line">
+              <span>Sous‑total</span>
+              <span className="v">{servicePrice} €</span>
+            </div>
+            {travelFeeEur > 0 && (
+              <div className="total-line">
+                <span>Déplacement</span>
+                <span className="v">+{travelFeeEur.toFixed(0)} €</span>
+              </div>
+            )}
+            {discountEur > 0 && (
+              <div className="total-line discount">
+                <span>Remise 1ère visite (−20 %)</span>
+                <span className="v">−{discountEur} €</span>
+              </div>
+            )}
+            <div className="total-line">
+              <span>Frais de gestion</span>
+              <span className="v">Offerts</span>
+            </div>
+
+            <div className="total-grand">
+              <div className="lbl">Total</div>
+              <div className="v">
+                {totalEur.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                <small>€</small>
+              </div>
+            </div>
+
+            <div className="gives-back">
+              <span className="ic">♥</span>
+              <div>Cette séance vous fait <strong style={{ fontFamily: "var(--serif)", fontStyle: "italic" }}>gagner 1 tampon</strong> dans votre Bulle d'or. Fidélité récompensée.</div>
+            </div>
+
+            <div className="co-trust">
+              <div className="co-trust-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                </svg>
+                SSL 256 bits
+              </div>
+              <div className="co-trust-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M12 2 4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/>
+                </svg>
+                Stripe certifié PCI
+              </div>
+              <div className="co-trust-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+                </svg>
+                Annul. 24h
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    )
+  }
 
   if (success) {
     return (
@@ -645,50 +856,8 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                   </div>
                 )}
 
-                {/* ── Step 5: Paiement ── */}
-                {step === 5 && clientSecret && (
-                  <div className="panel">
-                    <span className="eyebrow">Étape 6</span>
-                    <h2 style={{ marginTop: 12 }}>Paiement <span className="italic">sécurisé.</span></h2>
-                    <p className="panel-sub">
-                      Vos coordonnées bancaires sont traitées directement par Stripe — nous n'y avons jamais accès.
-                    </p>
-                    <div style={{
-                      background: "#f9f6f2",
-                      border: "1px solid var(--line)",
-                      borderRadius: 14,
-                      padding: "24px 20px",
-                      marginBottom: 8,
-                    }}>
-                      <Elements
-                        stripe={stripePromise}
-                        options={{
-                          clientSecret,
-                          appearance: {
-                            theme: "stripe",
-                            variables: {
-                              colorPrimary: "#D89175",
-                              colorBackground: "#f9f6f2",
-                              colorText: "#1C1C1C",
-                              fontFamily: "Manrope, sans-serif",
-                              borderRadius: "10px",
-                            },
-                          },
-                        }}
-                      >
-                        <PaymentForm
-                          amountInCents={amountInCents}
-                          refCode={refCode}
-                          onSuccess={() => setSuccess(true)}
-                        />
-                      </Elements>
-                    </div>
-                    <p style={{ fontSize: 12, color: "var(--mute)", textAlign: "center", marginTop: 8 }}>
-                      🔒 Paiement chiffré SSL · Propulsé par{" "}
-                      <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--mute)" }}>Stripe</a>
-                    </p>
-                  </div>
-                )}
+                {/* Step 5 handled outside the wizard grid — see checkout render below */}
+                {step === 5 && <div />}
               </motion.div>
             </AnimatePresence>
           </div>
