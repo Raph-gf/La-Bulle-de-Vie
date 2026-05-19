@@ -37,7 +37,7 @@ interface Props {
   userData?: UserData | null
 }
 
-// ── Stripe inner form (must be inside <Elements>) ───────────────────
+// ── Stripe inner form — steps 2, 3 + submit (must be inside <Elements>) ─
 interface StripePaymentBlockProps {
   amountInCents: number
   refCode: string
@@ -79,10 +79,10 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
 
   return (
     <form onSubmit={handlePay}>
-      {/* Block 2 — Mode de paiement */}
-      <div className="pay-block">
-        <div className="pay-block-head">
-          <div className="pay-block-num">2</div>
+      {/* Step 2 — Mode de paiement */}
+      <div className="step">
+        <div className="step-head">
+          <div className="step-num">2</div>
           <h2>Mode de paiement</h2>
           <span className="badge-secure">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -99,23 +99,59 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
         />
       </div>
 
+      {/* Step 3 — Adresse de facturation */}
+      <div className="step">
+        <div className="step-head">
+          <div className="step-num">3</div>
+          <h2>Adresse de facturation</h2>
+        </div>
+        <div className="form-grid">
+          <div className="fld full">
+            <label>Adresse</label>
+            <input type="text" placeholder="22 rue de la République" autoComplete="address-line1" />
+          </div>
+          <div className="fld">
+            <label>Code postal</label>
+            <input type="text" placeholder="69002" autoComplete="postal-code" inputMode="numeric" />
+          </div>
+          <div className="fld">
+            <label>Ville</label>
+            <input type="text" placeholder="Lyon" autoComplete="address-level2" />
+          </div>
+          <div className="fld full">
+            <label>Pays</label>
+            <select autoComplete="country-name">
+              <option>France</option>
+              <option>Belgique</option>
+              <option>Suisse</option>
+              <option>Luxembourg</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {payError && (
         <div style={{ background: "#FDECE2", border: "1px solid #F4C8AE", borderRadius: 10, padding: "12px 16px", color: "#8B4427", fontSize: 14, marginBottom: 16 }}>
           {payError}
         </div>
       )}
 
-      <button type="submit" className="pay-btn-main" disabled={!stripe || paying}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width={16} height={16}>
-          <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
-        </svg>
-        <span>{paying ? "Paiement en cours…" : <>Payer <strong>{fmtAmount}</strong></>}</span>
-        {!paying && <span className="arrow">→</span>}
+      <button type="submit" className={`pay-btn${paying ? " loading" : ""}`} disabled={!stripe || paying}>
+        <span className="lbl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width={16} height={16} style={{ verticalAlign: "middle" }}>
+            <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+          </svg>
+          {paying ? "Paiement en cours…" : <>Payer <strong>{fmtAmount}</strong></>}
+          {!paying && <span className="arrow">→</span>}
+        </span>
       </button>
 
-      <p className="pay-legal">
-        En cliquant sur "Payer", vous acceptez nos CGV et notre politique de confidentialité.
-        Vos données bancaires sont traitées par <strong style={{ color: "var(--ink)", fontWeight: 500 }}>Stripe</strong>, jamais stockées par nos serveurs.
+      <p className="legal">
+        En cliquant sur "Payer", vous acceptez nos{" "}
+        <a href="/cgv">CGV</a> et notre{" "}
+        <a href="/confidentialite">politique de confidentialité</a>.{" "}
+        Vos données bancaires sont traitées par{" "}
+        <strong style={{ color: "var(--ink)", fontWeight: 500 }}>Stripe</strong>, jamais stockées par nos serveurs.
       </p>
     </form>
   )
@@ -297,6 +333,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     const travelFeeEur = travelFee ? travelFee / 100 : 0
     const discountEur = firstTime ? Math.round(servicePrice * 0.2) : 0
     const totalEur = amountInCents / 100
+    const taxEur = Math.round((totalEur / 6) * 100) / 100
 
     function fmtDateLong(d: Date | null) {
       if (!d) return "—"
@@ -304,13 +341,33 @@ export default function BookingWizard({ serviceId, userData }: Props) {
       return `${dow} ${d.getDate()} ${MONTHS[d.getMonth()].toLowerCase()} ${d.getFullYear()}`
     }
 
+    const stripeAppearance = {
+      theme: "stripe" as const,
+      variables: {
+        colorPrimary: "#D89175",
+        colorBackground: "#ffffff",
+        colorText: "#1C1C1C",
+        colorTextPlaceholder: "#9e9181",
+        fontFamily: "Manrope, sans-serif",
+        borderRadius: "10px",
+        spacingUnit: "4px",
+      },
+      rules: {
+        ".Input": { border: "1px solid #e8ddd5", boxShadow: "none", padding: "14px 16px", fontSize: "15px" },
+        ".Input:focus": { border: "1px solid #1C1C1C", boxShadow: "0 0 0 4px #2218120c" },
+        ".Tab": { border: "1.5px solid #e8ddd5", borderRadius: "10px" },
+        ".Tab--selected": { border: "1.5px solid #1C1C1C", boxShadow: "0 0 0 4px #2218120c" },
+        ".Label": { fontSize: "11px", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: "500", color: "#9e9181" },
+      },
+    }
+
     return (
       <div style={{ position: "fixed", inset: 0, background: "var(--paper)", overflowY: "auto", zIndex: 100 }}>
-        {/* Minimal top bar */}
+        {/* Sticky top bar */}
         <header className="co-top">
           <div className="co-top-inner">
             <button className="co-back" onClick={() => goTo(4)}>
-              <span className="arr">←</span>
+              <span className="arrow">←</span>
               Retour à la réservation
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--serif)", fontSize: 18, fontStyle: "italic" }}>
@@ -326,69 +383,71 @@ export default function BookingWizard({ serviceId, userData }: Props) {
           </div>
         </header>
 
-        <div className="checkout">
-          {/* ── LEFT: form ── */}
+        <main className="checkout">
+          {/* ── LEFT: payment form ── */}
           <section>
             <div className="co-head">
               <span className="eyebrow">Étape finale</span>
               <h1>Régler <span className="italic">votre séance.</span></h1>
-              <p className="co-sub">Paiement 100 % sécurisé via Stripe — vos données ne transitent jamais par nos serveurs.</p>
+              <p className="sub">Paiement 100 % sécurisé via Stripe — vos données ne transitent jamais par nos serveurs.</p>
             </div>
 
-            {/* Block 1 — Vos coordonnées */}
-            <div className="pay-block">
-              <div className="pay-block-head">
-                <div className="pay-block-num">1</div>
+            {/* Express checkout */}
+            <div className="express">
+              <button type="button" className="btn-apple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.05 12.06c-.03-2.7 2.2-4 2.3-4.07-1.26-1.83-3.21-2.08-3.9-2.11-1.66-.17-3.24.97-4.08.97-.85 0-2.15-.95-3.54-.92-1.82.03-3.5 1.06-4.43 2.69-1.89 3.27-.48 8.1 1.36 10.77.9 1.3 1.97 2.76 3.36 2.7 1.36-.05 1.87-.87 3.51-.87 1.64 0 2.1.87 3.54.84 1.46-.02 2.39-1.32 3.28-2.62 1.04-1.5 1.47-2.96 1.49-3.03-.03-.01-2.86-1.1-2.89-4.35zM14.4 4.36c.75-.9 1.25-2.16 1.11-3.41-1.07.04-2.37.71-3.14 1.61-.69.8-1.3 2.08-1.13 3.31 1.2.09 2.42-.6 3.16-1.51z"/>
+                </svg>
+                Pay
+              </button>
+              <button type="button" className="btn-google-pay">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC04"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Pay
+              </button>
+            </div>
+            <div className="or-sep">ou payer par carte</div>
+
+            {/* Step 1 — Vos coordonnées */}
+            <div className="step">
+              <div className="step-head">
+                <div className="step-num">1</div>
                 <h2>Vos coordonnées</h2>
               </div>
-              <div className="co-form-grid">
-                <div className="co-fld">
+              <div className="form-grid">
+                <div className="fld">
                   <label>Prénom</label>
                   <input type="text" value={info.first} readOnly />
                 </div>
-                <div className="co-fld">
+                <div className="fld">
                   <label>Nom</label>
                   <input type="text" value={info.last} readOnly />
                 </div>
-                <div className="co-fld full">
-                  <label>E‑mail <span style={{ fontStyle: "italic", fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--mute)", fontSize: 11 }}>— confirmation envoyée ici</span></label>
-                  <input type="email" value={info.email} readOnly />
+                <div className="fld full">
+                  <label>E‑mail<span className="opt">— confirmation envoyée ici</span></label>
+                  <input type="email" value={info.email} readOnly className="with-icon" />
+                  <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 7 9-7"/>
+                  </svg>
                 </div>
                 {info.phone && (
-                  <div className="co-fld full">
-                    <label>Téléphone</label>
-                    <input type="tel" value={info.phone} readOnly />
+                  <div className="fld full">
+                    <label>Téléphone<span className="opt">— pour le rappel SMS, optionnel</span></label>
+                    <input type="tel" value={info.phone} readOnly className="with-icon" />
+                    <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/>
+                    </svg>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Block 2 + submit — Stripe Elements */}
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: "stripe",
-                  variables: {
-                    colorPrimary: "#D89175",
-                    colorBackground: "#ffffff",
-                    colorText: "#1C1C1C",
-                    colorTextPlaceholder: "#9e9181",
-                    fontFamily: "Manrope, sans-serif",
-                    borderRadius: "10px",
-                    spacingUnit: "4px",
-                  },
-                  rules: {
-                    ".Input": { border: "1px solid #e8ddd5", boxShadow: "none", padding: "14px 16px", fontSize: "15px" },
-                    ".Input:focus": { border: "1px solid #1C1C1C", boxShadow: "0 0 0 4px #2218120c" },
-                    ".Tab": { border: "1.5px solid #e8ddd5", borderRadius: "10px" },
-                    ".Tab--selected": { border: "1.5px solid #1C1C1C", boxShadow: "0 0 0 4px #2218120c" },
-                    ".Label": { fontSize: "11px", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: "500", color: "#9e9181" },
-                  },
-                },
-              }}
-            >
+            {/* Steps 2 (PaymentElement) + 3 (billing) + submit — inside <Elements> */}
+            <Elements stripe={stripePromise} options={{ clientSecret, appearance: stripeAppearance }}>
               <StripePaymentBlock
                 amountInCents={amountInCents}
                 refCode={refCode}
@@ -398,11 +457,10 @@ export default function BookingWizard({ serviceId, userData }: Props) {
           </section>
 
           {/* ── RIGHT: order summary ── */}
-          <aside className="co-summary">
+          <aside className="summary">
             <h3>Votre commande</h3>
-            <p className="co-sub">{fmtDateLong(date)}{time ? ` · ${time.replace(":", "h")}` : ""}</p>
+            <div className="sub">{fmtDateLong(date)}{time ? ` · ${time.replace(":", "h")}` : ""}</div>
 
-            {/* Service item */}
             {svc && (
               <div className="order-item">
                 <div className="order-thumb">❋</div>
@@ -418,13 +476,11 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               </div>
             )}
 
-            {/* Promo code (UI only for now) */}
             <div className="promo-row">
               <input type="text" placeholder="Code promo" maxLength={16} style={{ textTransform: "uppercase" }} />
               <button type="button">Appliquer</button>
             </div>
 
-            {/* Totals */}
             <div className="total-line">
               <span>Sous‑total</span>
               <span className="v">{servicePrice} €</span>
@@ -445,11 +501,17 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               <span>Frais de gestion</span>
               <span className="v">Offerts</span>
             </div>
+            <div className="total-line">
+              <span>TVA incluse (20 %)</span>
+              <span className="v">{taxEur.toFixed(2)} €</span>
+            </div>
 
             <div className="total-grand">
-              <div className="lbl">Total</div>
+              <div>
+                <div className="lbl">Total</div>
+              </div>
               <div className="v">
-                {totalEur.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                <span>{totalEur.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                 <small>€</small>
               </div>
             </div>
@@ -459,20 +521,20 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               <div>Cette séance vous fait <strong style={{ fontFamily: "var(--serif)", fontStyle: "italic" }}>gagner 1 tampon</strong> dans votre Bulle d'or. Fidélité récompensée.</div>
             </div>
 
-            <div className="co-trust">
-              <div className="co-trust-item">
+            <div className="trust">
+              <div className="trust-item">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
                 </svg>
                 SSL 256 bits
               </div>
-              <div className="co-trust-item">
+              <div className="trust-item">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <path d="M12 2 4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/>
                 </svg>
                 Stripe certifié PCI
               </div>
-              <div className="co-trust-item">
+              <div className="trust-item">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
                 </svg>
@@ -480,7 +542,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               </div>
             </div>
           </aside>
-        </div>
+        </main>
       </div>
     )
   }
