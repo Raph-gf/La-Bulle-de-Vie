@@ -1193,3 +1193,188 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
   .field.full{grid-column: auto}
   .panel{padding: 28px 24px 24px}
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Confirmation page
+───────────────────────────────────────────────────────────── */
+.ok-bg{
+  background:
+    radial-gradient(ellipse at 20% 10%, #F7E3CE 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 90%, #E9DCC9 0%, transparent 50%),
+    linear-gradient(180deg, #F7EFE3 0%, #F1E7DA 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Ambient bubble field */
+.bub-field{position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none}
+.bub{
+  position:absolute; border-radius:50%;
+  background:
+    radial-gradient(circle at 30% 28%, #ffffffd8 0%, #ffffff40 25%, transparent 55%),
+    radial-gradient(circle at 70% 75%, var(--terra-soft) 0%, transparent 50%);
+  border:1px solid #ffffff70;
+  box-shadow: inset 0 0 24px #ffffff40, 0 8px 24px #2218121a;
+  opacity:.55;
+  animation: bubFloat linear infinite, bubWobble 5s ease-in-out infinite;
+}
+.bub::before{
+  content:""; position:absolute; top:14%; left:18%;
+  width:24%; height:18%; border-radius:50%;
+  background:#ffffffcc; filter:blur(2px);
+}
+@keyframes bubFloat{
+  0%  {transform:translate3d(0,105vh,0) scale(.6); opacity:0}
+  7%  {opacity:.6}
+  93% {opacity:.45}
+  100%{transform:translate3d(var(--dx,40px),-25vh,0) scale(1); opacity:0}
+}
+@keyframes bubWobble{
+  0%,100%{margin-left:0}
+  50%    {margin-left:18px}
+}
+
+/* Top bar */
+.ok-top{padding:24px 32px; display:flex; justify-content:center; position:relative; z-index:1}
+.ok-brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); font-family:var(--serif); font-style:italic; font-size:20px}
+.ok-brand .dot{width:10px; height:10px; border-radius:50%; background:radial-gradient(circle at 30% 30%,#fff,var(--terra) 70%); box-shadow:0 0 12px var(--terra-soft); animation:pulse 3s ease-in-out infinite; flex-shrink:0}
+
+/* Page layout */
+.ok-page{max-width:920px; margin:0 auto; padding:32px 32px 80px; position:relative}
+
+/* Ray burst */
+.burst{position:absolute; top:140px; left:50%; transform:translate(-50%,-50%); z-index:1; width:200px; height:200px; pointer-events:none}
+.burst .ray{position:absolute; top:50%; left:50%; transform-origin:0 50%; width:80px; height:2px; background:linear-gradient(90deg,var(--terra) 0%,transparent 100%); opacity:0; animation:rayBurst .9s ease-out .35s forwards}
+@keyframes rayBurst{
+  0%  {transform:rotate(var(--r)) translateX(0) scaleX(.2); opacity:0}
+  30% {opacity:.9}
+  100%{transform:rotate(var(--r)) translateX(70px) scaleX(1); opacity:0}
+}
+
+/* Main card */
+.ok-card{background:transparent; padding:80px 60px 64px; text-align:center; position:relative; overflow:visible; animation:cardIn .8s cubic-bezier(.2,.7,.2,1) backwards}
+@keyframes cardIn{from{opacity:0; transform:translateY(24px)}}
+.ok-card > *{position:relative; z-index:1}
+
+/* Eyebrow + check */
+.ok-head{display:inline-flex; align-items:center; gap:18px; margin-bottom:40px}
+.ok-eyebrow{font-size:11px; letter-spacing:.32em; text-transform:uppercase; color:var(--mute); font-weight:500; opacity:0; animation:fadeIn .6s ease 1.2s forwards}
+.ok-eyebrow::before{content:""; display:inline-block; vertical-align:middle; width:30px; height:1px; background:var(--mute); opacity:.5; margin-right:14px}
+
+/* Check circle */
+.check-wrap{position:relative; display:inline-block}
+.check-rings{position:absolute; inset:0; pointer-events:none}
+.check-rings span{position:absolute; inset:0; border:2px solid var(--terra); border-radius:50%; opacity:0; animation:ripple 2.4s cubic-bezier(.2,.7,.2,1) infinite}
+.check-rings span:nth-child(2){animation-delay:.8s}
+.check-rings span:nth-child(3){animation-delay:1.6s}
+@keyframes ripple{
+  0%  {transform:scale(1); opacity:.5}
+  100%{transform:scale(2.2); opacity:0}
+}
+.check-circle{position:relative; width:76px; height:76px; border-radius:50%; background:var(--terra); display:flex; align-items:center; justify-content:center; box-shadow:0 16px 40px -8px var(--terra); animation:checkPop .8s cubic-bezier(.2,1.6,.4,1) .1s backwards}
+@keyframes checkPop{
+  0%  {transform:scale(0); opacity:0}
+  60% {transform:scale(1.15)}
+  100%{transform:scale(1); opacity:1}
+}
+.check-circle svg{width:42px; height:42px; stroke:#fff; stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round}
+.check-circle svg path{stroke-dasharray:30; stroke-dashoffset:30; animation:drawCheck .6s cubic-bezier(.5,0,.5,1) .7s forwards}
+@keyframes drawCheck{to{stroke-dashoffset:0}}
+
+/* Title */
+.ok-title{font-family:var(--serif); font-weight:400; font-size:clamp(44px,6.6vw,88px); line-height:1; margin-bottom:24px; letter-spacing:-.01em}
+.ok-title .word{display:inline-block; overflow:hidden; vertical-align:baseline; padding-bottom:.12em}
+.ok-title .word > span{display:inline-block; transform:translateY(110%); animation:riseWord .8s cubic-bezier(.2,.7,.2,1) forwards}
+.ok-title .word:nth-child(1) > span{animation-delay:.9s}
+.ok-title .word:nth-child(2) > span{animation-delay:1.0s}
+.ok-title .word:nth-child(3) > span{animation-delay:1.1s; font-style:italic; color:var(--terra)}
+@keyframes riseWord{to{transform:translateY(0)}}
+
+.ok-sub{color:var(--mute); font-size:17px; line-height:1.6; max-width:480px; margin:0 auto 40px; opacity:0; animation:fadeIn .6s ease 1.5s forwards}
+
+/* Ref pill */
+.ref-pill{display:inline-flex; align-items:center; gap:18px; padding:12px 24px; background:var(--cream); border-radius:999px; margin-bottom:36px; opacity:0; transform:translateY(8px); animation:pillIn .6s cubic-bezier(.2,.7,.2,1) 1.7s forwards}
+@keyframes pillIn{to{opacity:1; transform:none}}
+.ref-pill .l{font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--mute)}
+.ref-pill .v{font-family:var(--serif); font-size:18px; color:var(--ink)}
+.copy-btn{background:transparent; border:none; cursor:pointer; color:var(--mute); padding:4px; line-height:0; transition:color .2s,transform .2s}
+.copy-btn:hover{color:var(--terra); transform:translateY(-1px)}
+.copy-btn svg{width:14px; height:14px}
+.copy-flash{font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--terra); opacity:0; margin-left:6px; transition:opacity .25s}
+.copy-flash.show{opacity:1}
+
+/* CTAs */
+.ok-cta{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; opacity:0; animation:fadeIn .6s ease 1.9s forwards}
+.ok-cta .btn{padding:16px 28px}
+
+/* Calendar row */
+.cal-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:24px; opacity:0; animation:fadeIn .6s ease 2.6s forwards}
+.cal-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:999px; border:1px solid #ffffff90; background:#ffffffb0; backdrop-filter:blur(8px); color:var(--mute); font-family:var(--sans); font-size:13px; cursor:pointer; text-decoration:none; transition:all .25s}
+.cal-btn:hover{border-color:var(--ink); background:#fff; color:var(--ink); transform:translateY(-1px)}
+.cal-btn svg{width:14px; height:14px}
+
+/* Booking summary (glassmorphism) */
+.conf-summary{margin-top:32px; background:#ffffffb8; backdrop-filter:blur(14px) saturate(1.1); -webkit-backdrop-filter:blur(14px) saturate(1.1); border:1px solid #ffffff80; border-radius:18px; overflow:hidden; box-shadow:0 30px 80px -50px #2218124a; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.0s forwards}
+.conf-summary-head{padding:26px 32px; background:#fbf6efb0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap}
+.conf-summary-head h3{font-size:22px}
+.conf-summary-meta{font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--mute)}
+.conf-booking{padding:32px; display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:flex-start}
+.booking-main h2{font-size:32px; line-height:1.1; margin-bottom:8px}
+.booking-with{font-family:var(--serif); font-style:italic; color:var(--terra); font-size:18px; margin-bottom:24px}
+.info-list{display:flex; flex-direction:column; gap:14px}
+.info-row{display:flex; gap:14px; align-items:center; padding:12px 0; border-bottom:1px dashed var(--line)}
+.info-row:last-child{border-bottom:none}
+.ic-wrap{width:40px; height:40px; border-radius:50%; background:var(--cream); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--terra)}
+.ic-wrap svg{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round}
+.info-lbl{font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--mute); margin-bottom:3px}
+.info-val{font-family:var(--serif); font-size:18px; line-height:1.2; color:var(--ink)}
+.info-val a{color:var(--terra); text-decoration:none; font-style:italic}
+.booking-side{background:linear-gradient(135deg,var(--cream) 0%,#F0E4D2 100%); border-radius:14px; padding:28px}
+.booking-side h4{font-size:16px; margin-bottom:14px}
+.receipt{display:flex; flex-direction:column}
+.receipt-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; font-size:14px}
+.receipt-row + .receipt-row{border-top:1px dashed #2218121f}
+.receipt-row .rl{color:var(--mute)}
+.receipt-row .rv{font-family:var(--serif); font-size:17px; color:var(--ink)}
+.receipt-row.disc .rv{color:var(--terra)}
+.receipt-total{display:flex; justify-content:space-between; align-items:flex-end; margin-top:14px; padding-top:14px; border-top:1px solid var(--ink)}
+.receipt-total .rl{font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--mute)}
+.receipt-total .rv{font-family:var(--serif); font-size:32px; line-height:1; color:var(--ink)}
+.paid-pill{display:inline-flex; align-items:center; gap:6px; margin-top:14px; padding:5px 12px; border-radius:999px; background:#EAF1E8; color:#3D6346; font-size:11.5px; letter-spacing:.06em}
+.paid-pill::before{content:""; width:6px; height:6px; border-radius:50%; background:#5C8262}
+
+/* Next steps */
+.next-steps{margin-top:32px; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.2s forwards}
+.next-steps h3{font-size:22px; margin-bottom:14px; text-align:center}
+.next-steps .ns-sub{text-align:center; color:var(--mute); margin-bottom:32px; font-size:14.5px}
+.steps-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+.conf-step{background:#ffffffa8; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:14px; padding:24px; border:1px solid #ffffff80; transition:transform .3s ease,border-color .3s ease,background .3s}
+.conf-step:hover{transform:translateY(-3px); background:#ffffffd0; border-color:var(--terra-soft)}
+.conf-step .num{font-family:var(--serif); font-style:italic; color:var(--terra); font-size:24px; line-height:1}
+.conf-step h4{font-size:18px; margin-top:10px}
+.conf-step p{font-size:13.5px; margin-top:8px; line-height:1.55; color:var(--mute)}
+
+/* Account CTA */
+.acc-cta{margin-top:32px; background:linear-gradient(135deg,#E9DCC9d0 0%,#F1E7DAd0 100%); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid #ffffff80; border-radius:18px; padding:48px 40px; text-align:center; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.4s forwards; position:relative; overflow:hidden}
+.acc-cta::before{content:""; position:absolute; bottom:-40%; right:-15%; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle,var(--terra-soft) 0%,transparent 70%); opacity:.4}
+.acc-cta > *{position:relative; z-index:1}
+.acc-cta h3{font-size:clamp(24px,2.6vw,36px); margin-bottom:14px}
+.acc-cta p{color:var(--mute); margin:0 auto 28px; max-width:540px; line-height:1.6; font-size:15px}
+.acc-cta-row{display:flex; gap:12px; justify-content:center; flex-wrap:wrap}
+
+/* Footer */
+.ok-foot{margin-top:64px; padding-top:32px; border-top:1px solid var(--line); text-align:center; color:var(--mute); font-size:12px}
+.ok-foot a{color:var(--terra); text-decoration:none}
+
+@media(max-width:760px){
+  .ok-card{padding:56px 28px 48px}
+  .conf-booking{grid-template-columns:1fr; gap:24px}
+  .steps-grid{grid-template-columns:1fr}
+  .conf-summary-head{padding:20px 24px}
+  .ok-title{font-size:44px}
+  .check-circle{width:64px; height:64px}
+  .check-circle svg{width:34px; height:34px}
+  .burst{top:120px}
+}
+

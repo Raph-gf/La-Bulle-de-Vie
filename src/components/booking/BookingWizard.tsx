@@ -91,7 +91,12 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
             SSL · 256 bits
           </span>
         </div>
-        <PaymentElement options={{ layout: "tabs" }} />
+        <PaymentElement
+          options={{
+            layout: "tabs",
+            paymentMethodOrder: ["card", "apple_pay", "google_pay", "paypal", "revolut_pay"],
+          }}
+        />
       </div>
 
       {payError && (
@@ -128,7 +133,6 @@ export default function BookingWizard({ serviceId, userData }: Props) {
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
   const [info, setInfo] = useState<Info>({ first: "", last: "", email: "", phone: "", place: "cabinet", address: "", note: "" })
   const [firstTime, setFirstTime] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [refCode, setRefCode] = useState("")
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [amountInCents, setAmountInCents] = useState(0)
@@ -254,6 +258,23 @@ export default function BookingWizard({ serviceId, userData }: Props) {
       setRefCode(data.ref)
       setClientSecret(data.clientSecret)
       setAmountInCents(data.amountInCents)
+      // Save booking data so confirmation page can display details
+      sessionStorage.setItem("booking_confirmation", JSON.stringify({
+        ref: data.ref,
+        serviceName: svc.name,
+        serviceDur: svc.dur,
+        date: date?.toISOString().split("T")[0] ?? "",
+        time: time ?? "",
+        place: info.place,
+        address: info.address,
+        firstName: info.first,
+        lastName: info.last,
+        email: info.email,
+        phone: info.phone,
+        amountInCents: data.amountInCents,
+        travelFee: travelFee,
+        isFirstTime: firstTime,
+      }))
       goTo(5)
     } catch {
       setSubmitError("Erreur réseau. Vérifiez votre connexion et réessayez.")
@@ -271,7 +292,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
   )
 
   // ── Step 5: full-page checkout layout ──────────────────────────────
-  if (step === 5 && clientSecret && !success) {
+  if (step === 5 && clientSecret) {
     const servicePrice = svc ? svc.price : 0
     const travelFeeEur = travelFee ? travelFee / 100 : 0
     const discountEur = firstTime ? Math.round(servicePrice * 0.2) : 0
@@ -284,7 +305,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     }
 
     return (
-      <div style={{ background: "var(--paper)", minHeight: "100vh" }}>
+      <div style={{ position: "fixed", inset: 0, background: "var(--paper)", overflowY: "auto", zIndex: 100 }}>
         {/* Minimal top bar */}
         <header className="co-top">
           <div className="co-top-inner">
@@ -371,7 +392,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               <StripePaymentBlock
                 amountInCents={amountInCents}
                 refCode={refCode}
-                onSuccess={() => setSuccess(true)}
+                onSuccess={() => router.push(`/booking/confirmation?ref=${refCode}`)}
               />
             </Elements>
           </section>
@@ -459,51 +480,6 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               </div>
             </div>
           </aside>
-        </div>
-      </div>
-    )
-  }
-
-  if (success) {
-    return (
-      <div className="resa-page">
-        <div className="wrap">
-          <div style={{ maxWidth: 780, margin: "0 auto", paddingBottom: 80 }}>
-            <div className="success">
-              <div className="check">✓</div>
-              <span className="eyebrow" style={{ justifyContent: "center", display: "inline-flex" }}>Confirmation</span>
-              <h2 style={{ marginTop: 14 }}>Votre bulle <span className="italic">est posée.</span></h2>
-              <p>Je vous envoie un e‑mail de confirmation dans les minutes qui viennent. À très vite, et merci pour votre confiance.</p>
-              <div className="ref">
-                <small>Référence</small>
-                <span>{refCode}</span>
-              </div>
-              <div className="success-actions">
-                <Link className="btn primary" href="/">Retour à l'accueil <span className="arrow">→</span></Link>
-                <button className="btn" onClick={() => window.print()}>Imprimer la confirmation</button>
-              </div>
-            </div>
-
-            <div style={{
-              marginTop: 32,
-              background: "var(--cream)",
-              border: "1px solid var(--line)",
-              borderRadius: 16,
-              padding: "32px 36px",
-              textAlign: "center",
-            }}>
-              <p style={{ fontFamily: "var(--serif)", fontSize: "1.25rem", margin: "0 0 8px" }}>
-                Gérez vos rendez-vous <span className="italic">en un clic.</span>
-              </p>
-              <p style={{ color: "var(--mute)", fontSize: "0.9rem", margin: "0 0 24px" }}>
-                Créez un compte pour consulter vos réservations, annuler facilement et retrouver vos factures — sans jamais ressaisir vos informations.
-              </p>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                <Link href="/register" className="btn primary">Créer un compte gratuit <span className="arrow">→</span></Link>
-                <Link href="/login" className="btn" style={{ opacity: 0.7 }}>J'ai déjà un compte</Link>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     )

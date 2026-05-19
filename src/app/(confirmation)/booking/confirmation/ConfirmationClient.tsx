@@ -1,0 +1,481 @@
+"use client"
+import { useEffect, useState, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { motion } from "motion/react"
+
+type BookingData = {
+  ref: string
+  serviceName: string
+  serviceDur: number
+  date: string
+  time: string
+  place: "cabinet" | "domicile"
+  address: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  amountInCents: number
+  travelFee: number | null
+  isFirstTime: boolean
+}
+
+const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
+
+function fmtDateLong(iso: string) {
+  const d = new Date(iso + "T12:00:00")
+  const dow = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"][d.getDay()]
+  return `${dow} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function makeICS(data: BookingData): string {
+  const d = new Date(data.date + "T" + data.time + ":00")
+  const end = new Date(d.getTime() + data.serviceDur * 60 * 1000)
+  const fmt = (dt: Date) => dt.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//La Bulle De Vie//FR",
+    "BEGIN:VEVENT",
+    `UID:${data.ref}@labulldevie.fr`,
+    `DTSTART:${fmt(d)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${data.serviceName} — La Bulle De Vie`,
+    `DESCRIPTION:Référence : ${data.ref}\\nE-mail de confirmation envoyé à ${data.email}`,
+    `LOCATION:${data.place === "cabinet" ? "Cabinet Lyon 7ème, Lyon" : data.address}`,
+    "STATUS:CONFIRMED",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n")
+}
+
+function googleCalUrl(data: BookingData): string {
+  const d = new Date(data.date + "T" + data.time + ":00")
+  const end = new Date(d.getTime() + data.serviceDur * 60 * 1000)
+  const fmt = (dt: Date) => dt.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
+  const p = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `${data.serviceName} — La Bulle De Vie`,
+    dates: `${fmt(d)}/${fmt(end)}`,
+    details: `Référence : ${data.ref}`,
+    location: data.place === "cabinet" ? "Cabinet Lyon 7ème, Lyon" : data.address,
+  })
+  return `https://calendar.google.com/calendar/render?${p.toString()}`
+}
+
+// Ambient bubbles config (fixed per render)
+const AMBIENT = Array.from({ length: 12 }, (_, i) => ({
+  size: 28 + (i * 17) % 60,
+  left: (i * 8.3 + 5) % 100,
+  dur: 18 + (i * 3.7) % 14,
+  delay: -(i * 2.1) % 16,
+  dx: ((i % 4) - 1.5) * 28,
+}))
+
+// Confetti config (fixed per render)
+const CONFETTI = Array.from({ length: 22 }, (_, i) => ({
+  angle: (360 / 22) * i + (i % 3) * 8 - 4,
+  dist: 100 + (i % 5) * 30,
+  size: 6 + (i % 4) * 4,
+  delay: (i % 6) * 0.06,
+  color: i % 3 === 0 ? "#D89175" : i % 3 === 1 ? "#F5C5A3" : "#E8DDD5",
+}))
+
+export default function ConfirmationClient() {
+  const params = useSearchParams()
+  const [data, setData] = useState<BookingData | null>(null)
+  const [ref, setRef] = useState("")
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const urlRef = params.get("ref") ?? ""
+    try {
+      const raw = sessionStorage.getItem("booking_confirmation")
+      if (raw) {
+        const parsed = JSON.parse(raw) as BookingData
+        setData(parsed)
+        setRef(parsed.ref || urlRef)
+        sessionStorage.removeItem("booking_confirmation")
+      } else {
+        setRef(urlRef)
+      }
+    } catch {
+      setRef(urlRef)
+    }
+  }, [params])
+
+  const copyRef = useCallback(() => {
+    if (!ref) return
+    navigator.clipboard.writeText(ref).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [ref])
+
+  function downloadICS() {
+    if (!data) return
+    const ics = makeICS(data)
+    const blob = new Blob([ics], { type: "text/calendar" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `bulle-${data.ref}.ics`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const totalEur = data ? Math.round(data.amountInCents / 100) : 0
+  const travelFeeEur = data?.travelFee ? Math.round(data.travelFee / 100) : 0
+  const basePrice = data
+    ? data.isFirstTime
+      ? Math.round(data.amountInCents / 100 / 0.8)
+      : Math.round(data.amountInCents / 100) - travelFeeEur
+    : 0
+  const discount = data?.isFirstTime ? Math.round(basePrice * 0.2) : 0
+
+  return (
+    <div className="ok-bg">
+      {/* Ambient bubble field */}
+      <div className="bub-field" aria-hidden>
+        {AMBIENT.map((b, i) => (
+          <div
+            key={i}
+            className="bub"
+            style={{
+              width: b.size,
+              height: b.size,
+              left: `${b.left}%`,
+              animationDuration: `${b.dur}s, 5s`,
+              animationDelay: `${b.delay}s, ${b.delay * 0.5}s`,
+              ["--dx" as string]: `${b.dx}px`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Confetti burst */}
+      {CONFETTI.map((c, i) => {
+        const rad = (c.angle * Math.PI) / 180
+        return (
+          <motion.div
+            key={i}
+            style={{
+              position: "fixed",
+              top: "40%",
+              left: "50%",
+              width: c.size,
+              height: c.size,
+              borderRadius: "50%",
+              background: c.color,
+              pointerEvents: "none",
+              zIndex: 50,
+              marginLeft: -c.size / 2,
+              marginTop: -c.size / 2,
+            }}
+            initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+            animate={{
+              x: Math.cos(rad) * c.dist,
+              y: Math.sin(rad) * c.dist,
+              scale: 0,
+              opacity: 0,
+            }}
+            transition={{ duration: 1.4, delay: c.delay, ease: [0.2, 0.7, 0.4, 1] }}
+          />
+        )
+      })}
+
+      {/* Minimal header */}
+      <header className="ok-top">
+        <Link href="/" className="ok-brand">
+          <span className="dot" />
+          La bulle de vie
+        </Link>
+      </header>
+
+      <div className="ok-page">
+        {/* Main celebration card */}
+        <div className="ok-card">
+          {/* Ray burst */}
+          <div className="burst" aria-hidden>
+            {Array.from({ length: 14 }, (_, i) => (
+              <div
+                key={i}
+                className="ray"
+                style={{ ["--r" as string]: `${(360 / 14) * i}deg` }}
+              />
+            ))}
+          </div>
+
+          {/* Check circle */}
+          <div className="check-wrap" style={{ marginBottom: 40 }}>
+            <div className="check-rings">
+              <span /><span /><span />
+            </div>
+            <div className="check-circle">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Word-by-word title */}
+          <h1 className="ok-title">
+            <span className="word"><span>Votre bulle</span></span>{" "}
+            <span className="word"><span>est</span></span>{" "}
+            <span className="word"><span>posée.</span></span>
+          </h1>
+
+          <p className="ok-sub">
+            Un e‑mail de confirmation vous a été envoyé.
+            À très vite, et merci pour votre confiance.
+          </p>
+
+          {/* Reference pill */}
+          <div className="ref-pill">
+            <span className="l">Référence</span>
+            <span className="v">{ref || "—"}</span>
+            <button className="copy-btn" onClick={copyRef} title={copied ? "Copié !" : "Copier la référence"}>
+              {copied ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Primary CTAs */}
+          <div className="ok-cta">
+            <Link href="/" className="btn primary">
+              Retour à l'accueil <span className="arrow">→</span>
+            </Link>
+            <button className="btn" onClick={() => window.print()}>
+              Imprimer la confirmation
+            </button>
+          </div>
+
+          {/* Calendar add buttons */}
+          {data && (
+            <div className="cal-row">
+              <a
+                href={googleCalUrl(data)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cal-btn"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                Google Agenda
+              </a>
+              <button className="cal-btn" onClick={downloadICS}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                Apple Calendrier
+              </button>
+              <button className="cal-btn" onClick={downloadICS}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M12 2v9m0 0l-3-3m3 3l3-3M3 17l1.5 4h15L21 17"/>
+                </svg>
+                Fichier .ics
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Booking summary */}
+        {data && (
+          <div className="conf-summary">
+            <div className="conf-summary-head">
+              <div>
+                <h3>Récapitulatif de votre réservation</h3>
+                <div className="conf-summary-meta">
+                  {data.serviceName} · {data.serviceDur} min
+                </div>
+              </div>
+              <div className="paid-pill">Confirmé</div>
+            </div>
+
+            <div className="conf-booking">
+              {/* Left — booking details */}
+              <div className="booking-main">
+                <h2>{data.serviceName}</h2>
+                <p style={{ color: "var(--mute)", fontSize: 15, marginBottom: 28, fontStyle: "italic" }}>
+                  {data.serviceDur} min
+                </p>
+                <div className="info-list">
+                  <div className="info-row">
+                    <div className="ic-wrap">
+                      <svg viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Date</div>
+                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
+                        {fmtDateLong(data.date)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="info-row">
+                    <div className="ic-wrap">
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9"/>
+                        <path d="M12 7v5l3 2"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Heure</div>
+                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
+                        {data.time.replace(":", "h")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="info-row">
+                    <div className="ic-wrap">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/>
+                        <circle cx="12" cy="9" r="2.5"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Lieu</div>
+                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
+                        {data.place === "cabinet"
+                          ? "Cabinet · Lyon 7ᵉ"
+                          : `À domicile${data.address ? ` — ${data.address}` : ""}`}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="info-row">
+                    <div className="ic-wrap">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Client</div>
+                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
+                        {data.firstName} {data.lastName}
+                      </div>
+                    </div>
+                  </div>
+                  {data.email && (
+                    <div className="info-row">
+                      <div className="ic-wrap">
+                        <svg viewBox="0 0 24 24">
+                          <rect x="2" y="4" width="20" height="16" rx="2"/>
+                          <path d="m2 7 10 7 10-7"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Confirmation envoyée à</div>
+                        <div style={{ fontFamily: "var(--serif)", fontSize: 16, marginTop: 2 }}>
+                          {data.email}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right — receipt */}
+              <div className="booking-side">
+                <h4>Détail du paiement</h4>
+                <div className="receipt">
+                  <div className="receipt-row">
+                    <span className="rl">{data.serviceName}</span>
+                    <span className="rv">{basePrice} €</span>
+                  </div>
+                  {travelFeeEur > 0 && (
+                    <div className="receipt-row">
+                      <span className="rl">Déplacement</span>
+                      <span className="rv">+{travelFeeEur} €</span>
+                    </div>
+                  )}
+                  {discount > 0 && (
+                    <div className="receipt-row disc">
+                      <span className="rl">Remise 1ère visite (−20 %)</span>
+                      <span className="rv">−{discount} €</span>
+                    </div>
+                  )}
+                </div>
+                <div className="receipt-total">
+                  <span className="rl">Total payé</span>
+                  <span className="rv">{totalEur}<small style={{ fontSize: "0.55em", marginLeft: 2 }}>€</small></span>
+                </div>
+                <div className="paid-pill" style={{ marginTop: 14 }}>
+                  Paiement confirmé
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Next steps */}
+        <div className="next-steps">
+          <h3>Et maintenant ?</h3>
+          <p className="ns-sub">Quelques détails pour que votre séance soit parfaite.</p>
+          <div className="steps-grid">
+            <div className="conf-step">
+              <div className="num">01.</div>
+              <h4>E‑mail de confirmation</h4>
+              <p>Un récapitulatif complet avec l'adresse du cabinet et toutes les infos vous attend dans votre boîte mail.</p>
+            </div>
+            <div className="conf-step">
+              <div className="num">02.</div>
+              <h4>Préparez-vous</h4>
+              <p>Venez confortable, sans parfum. Prévoyez quelques minutes de marge — la séance commence à l'heure.</p>
+            </div>
+            <div className="conf-step">
+              <div className="num">03.</div>
+              <h4>Rappel SMS 24h avant</h4>
+              <p>Vous recevrez un SMS la veille avec un lien pour confirmer ou annuler sans frais jusqu'à minuit.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Account CTA */}
+        <div className="acc-cta">
+          <h3>
+            Gérez vos rendez-vous{" "}
+            <span style={{ fontStyle: "italic", color: "var(--terra)" }}>en un clic.</span>
+          </h3>
+          <p>
+            Créez un compte gratuit pour consulter vos réservations, annuler facilement et retrouver vos factures
+            — sans jamais ressaisir vos informations.
+          </p>
+          <div className="acc-cta-row">
+            <Link href="/register" className="btn primary">
+              Créer un compte gratuit <span className="arrow">→</span>
+            </Link>
+            <Link href="/login" className="btn" style={{ opacity: 0.8 }}>
+              J'ai déjà un compte
+            </Link>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="ok-foot">
+          <p>
+            <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>
+            {" · "}
+            <Link href="/contact">Contact</Link>
+            {" · "}
+            La Bulle De Vie — Lyon 7ᵉ
+          </p>
+        </footer>
+      </div>
+    </div>
+  )
+}
