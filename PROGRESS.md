@@ -159,10 +159,20 @@
   - Accepts `serviceSlug` (maps to DB service ID server-side)
   - Guest bookings supported (no auth required)
   - Returns real `ref` code (BDV-XXXXXX) shown on success screen
-- ⬜ Add Stripe payment step after review — Stripe Elements card form
-- ⬜ Create Stripe `PaymentIntent` server-side on booking submit
-- ⬜ Stripe webhook: `payment_intent.succeeded` → set appointment `status: confirmed`
-- ⬜ Appointment confirmation / receipt page (shown after successful payment)
+- ✅ Stripe payment step added to booking wizard (step 6 — after review)
+  - `@stripe/react-stripe-js` + `@stripe/stripe-js` installed
+  - `src/lib/stripe.ts` — server-side Stripe singleton
+  - `POST /api/booking` now creates a `PaymentIntent` server-side and returns `clientSecret`
+  - Server computes price from DB (service price + travel fee + first-visit discount) — never trusts client amount
+  - `PaymentElement` rendered with custom appearance matching design system (terracotta accent, Manrope font)
+  - `stripe.confirmPayment({ redirect: "if_required" })` — handles 3DS inline, fallback redirect to `/booking/confirmation`
+  - On payment success: appointment `status: confirmed` inline (webhook also handles it)
+- ✅ Stripe webhook (`POST /api/webhooks/stripe`)
+  - Signature verified via `stripe.webhooks.constructEvent` before processing
+  - `payment_intent.succeeded` → sets appointment `status: confirmed` + stores `amountPaid`
+  - `payment_intent.payment_failed` → cancels appointment + frees slot (`isBooked: false`)
+  - Uses `appointmentId` from PaymentIntent metadata for all lookups
+- ⬜ Appointment confirmation / receipt page (shown after redirect from 3DS)
 
 ### Cancellation & refunds
 - ⬜ Client can cancel from `/compte#appts` → trigger Stripe refund based on cancellation policy
@@ -376,4 +386,4 @@
 
 ## Current phase: Phase 4 — Booking + Stripe
 ## Last session: 2026-05-19
-## Next step: Stripe payment step — PaymentIntent server-side + Stripe Elements card form + webhook to confirm appointment
+## Next step: Booking confirmation page (for 3DS redirect fallback) + cancellation/refund flow

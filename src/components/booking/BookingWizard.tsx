@@ -3,14 +3,23 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
+import { loadStripe } from "@stripe/stripe-js"
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js"
 import { SOINS, SoinId } from "@/lib/soins"
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 type Svc = { id: SoinId; name: string; price: number; dur: number }
 type Info = { first: string; last: string; email: string; phone: string; place: string; address: string; note: string }
 type Slot = { id: string; startTime: string; endTime: string }
 
 const SOIN_ORDER: SoinId[] = ["visage", "sel", "galet", "mains", "corps", "jambes"]
-const STEPS = ["Soin", "Date", "Heure", "Vos infos", "Confirmer"]
+const STEPS = ["Soin", "Date", "Heure", "Vos infos", "Confirmer", "Paiement"]
 const MONTHS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
 const DOW = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"]
 
@@ -27,6 +36,69 @@ interface Props {
   userData?: UserData | null
 }
 
+// ── Stripe payment form (mounted inside <Elements>) ──────────────────
+interface PaymentFormProps {
+  amountInCents: number
+  refCode: string
+  onSuccess: () => void
+}
+
+function PaymentForm({ amountInCents, refCode, onSuccess }: PaymentFormProps) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState<string | null>(null)
+
+  async function handlePay(e: React.FormEvent) {
+    e.preventDefault()
+    if (!stripe || !elements) return
+    setPaying(true)
+    setPayError(null)
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+      confirmParams: {
+        return_url: `${window.location.origin}/booking/confirmation?ref=${refCode}`,
+      },
+    })
+
+    if (error) {
+      setPayError(error.message ?? "Le paiement a échoué. Veuillez réessayer.")
+      setPaying(false)
+      return
+    }
+
+    if (paymentIntent?.status === "succeeded") {
+      onSuccess()
+    }
+  }
+
+  return (
+    <form onSubmit={handlePay}>
+      <PaymentElement options={{ layout: "tabs" }} />
+      {payError && (
+        <div style={{
+          background: "#FDECE2", border: "1px solid #F4C8AE",
+          borderRadius: 10, padding: "12px 16px",
+          color: "#8B4427", fontSize: 14, marginTop: 16,
+        }}>
+          {payError}
+        </div>
+      )}
+      <div className="step-nav" style={{ marginTop: 24 }}>
+        <div />
+        <button type="submit" className="btn primary" disabled={!stripe || paying}>
+          {paying
+            ? "Paiement en cours…"
+            : <>Payer {(amountInCents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} <span className="arrow">→</span></>}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ── Main wizard ──────────────────────────────────────────────────────
 export default function BookingWizard({ serviceId, userData }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(0)
@@ -40,6 +112,8 @@ export default function BookingWizard({ serviceId, userData }: Props) {
   const [firstTime, setFirstTime] = useState(false)
   const [success, setSuccess] = useState(false)
   const [refCode, setRefCode] = useState("")
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [amountInCents, setAmountInCents] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [availableDates, setAvailableDates] = useState<Set<string>>(new Set())
@@ -129,15 +203,16 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50)
   }
 
-  function calcTotal() {
+  function calcDisplayTotal() {
     if (!svc) return 0
     let t = svc.price
     if (info.place === "domicile") t += Math.round((travelFee ?? 1800) / 100)
-    if (firstTime && svc.id === "corps") t = Math.round(t * 0.8)
+    if (firstTime) t = Math.round(t * 0.8)
     return t
   }
 
-  async function handleConfirm() {
+  // Step 4 → 5: create appointment + PaymentIntent on the server
+  async function handleProceedToPayment() {
     if (!svc || !selectedSlotId) return
     setSubmitting(true)
     setSubmitError(null)
@@ -152,7 +227,6 @@ export default function BookingWizard({ serviceId, userData }: Props) {
           isFirstVisit: firstTime,
           location: info.place,
           clientAddress: info.place === "domicile" ? info.address : null,
-          travelFee: info.place === "domicile" ? (travelFee ?? 1800) : 0,
           name: `${info.first} ${info.last}`.trim(),
           email: info.email,
           phone: info.phone || null,
@@ -164,8 +238,9 @@ export default function BookingWizard({ serviceId, userData }: Props) {
         return
       }
       setRefCode(data.ref)
-      setSuccess(true)
-      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50)
+      setClientSecret(data.clientSecret)
+      setAmountInCents(data.amountInCents)
+      goTo(5)
     } catch {
       setSubmitError("Erreur réseau. Vérifiez votre connexion et réessayez.")
     } finally {
@@ -201,7 +276,6 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               </div>
             </div>
 
-            {/* Guest account CTA */}
             <div style={{
               marginTop: 32,
               background: "var(--cream)",
@@ -243,8 +317,8 @@ export default function BookingWizard({ serviceId, userData }: Props) {
               {i > 0 && <span className="step-sep" />}
               <div
                 className={`step${i === step ? " active" : ""}${i < step ? " done" : ""}`}
-                onClick={() => { if (i < step) goTo(i) }}
-                style={{ cursor: i < step ? "pointer" : "default" }}
+                onClick={() => { if (i < step && i < 5) goTo(i) }}
+                style={{ cursor: i < step && i < 5 ? "pointer" : "default" }}
               >
                 <span className="ix"><span>{i + 1}</span></span>
                 {label}
@@ -527,7 +601,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                   <div className="panel">
                     <span className="eyebrow">Étape 5</span>
                     <h2 style={{ marginTop: 12 }}>Tout est bon ? <span className="italic">On confirme.</span></h2>
-                    <p className="panel-sub">Un dernier coup d'œil avant l'envoi. Vous pouvez modifier chaque étape.</p>
+                    <p className="panel-sub">Un dernier coup d'œil avant le paiement. Vous pouvez modifier chaque étape.</p>
                     <div className="review">
                       {([
                         { label: "Soin", value: svc?.name ?? "—", editStep: 0 },
@@ -537,6 +611,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                         { label: "Coordonnées", value: `${info.email} · ${info.phone}`, editStep: 3 },
                         { label: "Lieu", value: info.place === "domicile" ? `À domicile${info.address ? ` — ${info.address}` : ""}` : "Au cabinet · Lyon 7ᵉ", editStep: 3 },
                         ...(info.place === "domicile" ? [{ label: "Déplacement", value: travelFee === null ? "À calculer" : travelFee === 0 ? "Gratuit" : `+${(travelFee / 100).toFixed(2).replace(".", ",")} €`, editStep: 3 }] : []),
+                        ...(firstTime ? [{ label: "Remise 1ère visite", value: "−20 %", editStep: 3 }] : []),
                         ...(info.note ? [{ label: "Note", value: info.note, editStep: 3 }] : []),
                       ] as { label: string; value: string; editStep: number }[]).map(row => (
                         <div key={row.label} className="review-row">
@@ -559,10 +634,57 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                     )}
                     <div className="step-nav">
                       <button className="ghost" onClick={() => goTo(3)}>← Retour</button>
-                      <button className="btn primary" onClick={handleConfirm} disabled={submitting}>
-                        {submitting ? "Confirmation en cours…" : <>Confirmer la réservation <span className="arrow">→</span></>}
+                      <button className="btn primary" onClick={handleProceedToPayment} disabled={submitting}>
+                        {submitting
+                          ? "Préparation du paiement…"
+                          : <>Procéder au paiement — {calcDisplayTotal()}€ <span className="arrow">→</span></>}
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* ── Step 5: Paiement ── */}
+                {step === 5 && clientSecret && (
+                  <div className="panel">
+                    <span className="eyebrow">Étape 6</span>
+                    <h2 style={{ marginTop: 12 }}>Paiement <span className="italic">sécurisé.</span></h2>
+                    <p className="panel-sub">
+                      Vos coordonnées bancaires sont traitées directement par Stripe — nous n'y avons jamais accès.
+                    </p>
+                    <div style={{
+                      background: "#f9f6f2",
+                      border: "1px solid var(--line)",
+                      borderRadius: 14,
+                      padding: "24px 20px",
+                      marginBottom: 8,
+                    }}>
+                      <Elements
+                        stripe={stripePromise}
+                        options={{
+                          clientSecret,
+                          appearance: {
+                            theme: "stripe",
+                            variables: {
+                              colorPrimary: "#D89175",
+                              colorBackground: "#f9f6f2",
+                              colorText: "#1C1C1C",
+                              fontFamily: "Manrope, sans-serif",
+                              borderRadius: "10px",
+                            },
+                          },
+                        }}
+                      >
+                        <PaymentForm
+                          amountInCents={amountInCents}
+                          refCode={refCode}
+                          onSuccess={() => setSuccess(true)}
+                        />
+                      </Elements>
+                    </div>
+                    <p style={{ fontSize: 12, color: "var(--mute)", textAlign: "center", marginTop: 8 }}>
+                      🔒 Paiement chiffré SSL · Propulsé par{" "}
+                      <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--mute)" }}>Stripe</a>
+                    </p>
                   </div>
                 )}
               </motion.div>
@@ -607,13 +729,21 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                   </div>
                 </div>
               )}
+              {firstTime && svc && (
+                <div className="summary-row" style={{ borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 12 }}>
+                  <div>
+                    <div className="l">Remise 1ère visite</div>
+                    <div className="v" style={{ fontSize: 13, color: "#b8e6b8" }}>−20 %</div>
+                  </div>
+                </div>
+              )}
               <div className="summary-total">
                 <div className="l">Total</div>
-                <div className="v">{svc ? `${calcTotal()}€` : "—"}</div>
+                <div className="v">{svc ? `${calcDisplayTotal()}€` : "—"}</div>
               </div>
               <div className="summary-perks">
-                <span className="ic">❋</span>
-                <div>Paiement à l'issue de la séance. Annulation gratuite jusqu'à 24h avant.</div>
+                <span className="ic">🔒</span>
+                <div>Paiement sécurisé par Stripe. Annulation gratuite jusqu'à 24h avant.</div>
               </div>
             </div>
           </aside>
