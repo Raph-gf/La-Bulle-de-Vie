@@ -1,5 +1,12 @@
 # La Bulle De Vie — Project Bible
 
+## Workflow
+
+- After every completed feature or significant change, commit and push to the current branch automatically — no need to ask.
+- Always use the `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` trailer in commit messages.
+
+---
+
 ## Project overview
 
 A full-stack booking and e-commerce platform for a massage/wellness specialist.
