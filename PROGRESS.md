@@ -146,6 +146,10 @@
   - `GET /api/dashboard/availability` — load saved schedule + upcoming slot count
   - `POST /api/dashboard/availability` — save schedule + regenerate slots
   - Bug fixed: Sunday was missing from `DayKey` type, `DAY_LABELS`, `DAYS` array, `DEFAULT` schedule, API `WORK_DAYS` set, and validation loop
+  - Bug fixed: old saved schedules (pre-Sunday) crashed on load — fixed by merging with `DEFAULT` so missing keys get safe fallbacks
+  - Bug fixed: slot generation used `setHours` (local time) — in France (UTC+2) all slot dates were stored one day early. Fixed with `setUTCHours` / `getUTCDay` / `setUTCDate` throughout
+  - Bug fixed: booking wizard fetched slots with `toISOString()` (UTC) — clicking any date in UTC+ timezone fetched the previous day's slots. Fixed using local `getFullYear/getMonth/getDate`
+- ⬜ UX: add "unsaved changes" indicator so specialist knows to click "Générer les créneaux" after edits
 - ⬜ Specialist can block specific dates / add one-off slots
 
 ### Booking wizard wiring
@@ -394,7 +398,7 @@
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
 ## Current phase: Phase 5 — Notifications
-## Last session: 2026-05-20
+## Last session: 2026-05-21
 ## Next step: Email notifications via Resend (booking confirmation to client + instant alert to specialist)
 
 ---
