@@ -46,7 +46,7 @@ export default function DisponibilitesPage() {
         return JSON.parse(text)
       })
       .then((data) => {
-        if (data.weeklySchedule) setSchedule(data.weeklySchedule as WeeklySchedule)
+        if (data.weeklySchedule) setSchedule({ ...DEFAULT, ...data.weeklySchedule } as WeeklySchedule)
         setUpcomingCount(data.upcomingSlotCount ?? 0)
       })
       .catch((err) => console.error("[disponibilites] fetch error:", err))
