@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { motion } from "motion/react"
 
 type BookingData = {
   ref: string
@@ -41,7 +40,7 @@ function fmtTime(t: string) {
   return t.replace(":", "h")
 }
 
-function endTime(time: string, dur: number): string {
+function calcEndTime(time: string, dur: number): string {
   const [h, m] = time.split(":").map(Number)
   const total = h * 60 + m + dur
   return `${Math.floor(total / 60)}h${String(total % 60).padStart(2, "0")}`
@@ -52,19 +51,14 @@ function makeICS(data: BookingData): string {
   const end = new Date(d.getTime() + data.serviceDur * 60 * 1000)
   const fmt = (dt: Date) => dt.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
   return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//La Bulle De Vie//FR",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//La Bulle De Vie//FR",
     "BEGIN:VEVENT",
     `UID:${data.ref}@labulldevie.fr`,
-    `DTSTART:${fmt(d)}`,
-    `DTEND:${fmt(end)}`,
+    `DTSTART:${fmt(d)}`, `DTEND:${fmt(end)}`,
     `SUMMARY:${data.serviceName} — La Bulle De Vie`,
-    `DESCRIPTION:Référence : ${data.ref}\\nE-mail de confirmation envoyé à ${data.email}`,
+    `DESCRIPTION:Référence : ${data.ref}\\nConfirmation envoyée à ${data.email}`,
     `LOCATION:${data.place === "cabinet" ? CABINET_ADDRESS : data.address}`,
-    "STATUS:CONFIRMED",
-    "END:VEVENT",
-    "END:VCALENDAR",
+    "STATUS:CONFIRMED", "END:VEVENT", "END:VCALENDAR",
   ].join("\r\n")
 }
 
@@ -82,48 +76,23 @@ function googleCalUrl(data: BookingData): string {
   return `https://calendar.google.com/calendar/render?${p.toString()}`
 }
 
-// Ambient bubbles (stable across renders)
-const AMBIENT = Array.from({ length: 12 }, (_, i) => ({
-  size: 28 + (i * 17) % 60,
-  left: (i * 8.3 + 5) % 100,
-  dur: 18 + (i * 3.7) % 14,
-  delay: -(i * 2.1) % 16,
-  dx: ((i % 4) - 1.5) * 28,
-}))
-
-// Confetti (stable across renders)
-const CONFETTI = Array.from({ length: 22 }, (_, i) => ({
-  angle: (360 / 22) * i + (i % 3) * 8 - 4,
-  dist: 100 + (i % 5) * 30,
-  size: 6 + (i % 4) * 4,
-  delay: (i % 6) * 0.06,
-  color: i % 3 === 0 ? "#D89175" : i % 3 === 1 ? "#F5C5A3" : "#E8DDD5",
-}))
-
 // ── Loading screen ───────────────────────────────────────────────────
 function LoadingScreen() {
   return (
     <div style={{
       minHeight: "100vh",
       background: "linear-gradient(160deg, #F9F2EB 0%, #F1E6D8 50%, #EBD9C6 100%)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 24,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24,
     }}>
       <div style={{
-        width: 56,
-        height: 56,
-        borderRadius: "50%",
-        border: "3px solid #E8DDD5",
-        borderTopColor: "#D89175",
+        width: 56, height: 56, borderRadius: "50%",
+        border: "3px solid #E8DDD5", borderTopColor: "#B86F4A",
         animation: "spin 0.9s linear infinite",
       }} />
       <p style={{ fontFamily: "var(--serif)", fontSize: 20, fontStyle: "italic", color: "var(--ink)", opacity: 0.7 }}>
         Confirmation de votre réservation…
       </p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
@@ -134,25 +103,19 @@ function RefundedScreen({ data }: { data: BookingData | null }) {
     <div style={{
       minHeight: "100vh",
       background: "linear-gradient(160deg, #F9F2EB 0%, #F1E6D8 50%, #EBD9C6 100%)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px 24px",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px",
     }}>
       <div style={{
         width: 76, height: 76, borderRadius: "50%",
         background: "#FDF0EB", border: "2px solid #F4C8AE",
         display: "flex", alignItems: "center", justifyContent: "center",
         marginBottom: 32, fontSize: 32,
-      }}>
-        ⏱
-      </div>
+      }}>⏱</div>
       <div style={{ maxWidth: 520, textAlign: "center" }}>
         <span style={{ display: "inline-block", fontSize: 11, letterSpacing: ".22em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 16 }}>
           Créneau non disponible
         </span>
-        <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.05, fontWeight: 400, marginBottom: 20 }}>
+        <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px,5vw,52px)", lineHeight: 1.05, fontWeight: 400, marginBottom: 20 }}>
           Ce créneau vient<br />
           <span style={{ fontStyle: "italic", color: "var(--terra)" }}>d'être pris.</span>
         </h1>
@@ -173,16 +136,11 @@ function RefundedScreen({ data }: { data: BookingData | null }) {
           <span style={{ color: "var(--terra)", fontSize: 20, lineHeight: 1, flexShrink: 0 }}>ℹ</span>
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6, margin: 0 }}>
             Retournez sur la page de réservation pour choisir un autre créneau disponible.
-            Vos informations personnelles seront pré-remplies.
           </p>
         </div>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/booking" className="btn primary">
-            Choisir un autre créneau <span className="arrow">→</span>
-          </Link>
-          <Link href="/" className="btn" style={{ opacity: 0.75 }}>
-            Retour à l'accueil
-          </Link>
+          <Link href="/booking" className="btn primary">Choisir un autre créneau <span className="arrow">→</span></Link>
+          <Link href="/" className="btn" style={{ opacity: 0.75 }}>Retour à l'accueil</Link>
         </div>
       </div>
       <p style={{ marginTop: 48, fontSize: 12, color: "var(--mute)" }}>
@@ -195,7 +153,7 @@ function RefundedScreen({ data }: { data: BookingData | null }) {
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────
+// ── Main confirmation component ──────────────────────────────────────
 export default function ConfirmationClient() {
   const params = useSearchParams()
   const [data, setData] = useState<BookingData | null>(null)
@@ -204,12 +162,14 @@ export default function ConfirmationClient() {
   const [status, setStatus] = useState<PageStatus>("loading")
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const attemptsRef = useRef(0)
-  const MAX_ATTEMPTS = 8
+
+  // DOM refs for bubble fields — direct DOM manipulation matches the design exactly
+  const bubFieldRef = useRef<HTMLDivElement>(null)
+  const confFieldRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const urlRef = params.get("ref") ?? ""
     let piId = ""
-
     try {
       const raw = sessionStorage.getItem("booking_confirmation")
       if (raw) {
@@ -221,35 +181,20 @@ export default function ConfirmationClient() {
       } else {
         setRef(urlRef)
       }
-    } catch {
-      setRef(urlRef)
-    }
+    } catch { setRef(urlRef) }
 
-    if (!piId) {
-      setStatus("confirmed")
-      return
-    }
+    if (!piId) { setStatus("confirmed"); return }
 
     async function checkStatus() {
       attemptsRef.current += 1
       try {
         const res = await fetch(`/api/booking/status?pi=${piId}`)
         const json = await res.json() as { status: string }
-        if (json.status === "confirmed") {
-          clearInterval(pollRef.current!)
-          setStatus("confirmed")
-        } else if (json.status === "refunded") {
-          clearInterval(pollRef.current!)
-          setStatus("refunded")
-        } else if (attemptsRef.current >= MAX_ATTEMPTS) {
-          clearInterval(pollRef.current!)
-          setStatus("confirmed")
-        }
+        if (json.status === "confirmed") { clearInterval(pollRef.current!); setStatus("confirmed") }
+        else if (json.status === "refunded") { clearInterval(pollRef.current!); setStatus("refunded") }
+        else if (attemptsRef.current >= 8) { clearInterval(pollRef.current!); setStatus("confirmed") }
       } catch {
-        if (attemptsRef.current >= MAX_ATTEMPTS) {
-          clearInterval(pollRef.current!)
-          setStatus("confirmed")
-        }
+        if (attemptsRef.current >= 8) { clearInterval(pollRef.current!); setStatus("confirmed") }
       }
     }
 
@@ -257,6 +202,54 @@ export default function ConfirmationClient() {
     pollRef.current = setInterval(checkStatus, 1500)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [params])
+
+  // ── Ambient bubble field: 18 initial + 1 every 1.1s (mirrors design JS exactly) ──
+  useEffect(() => {
+    const field = bubFieldRef.current
+    if (!field) return
+    const el = field  // narrowed non-null ref for closures
+
+    function makeBubble(initial = false) {
+      const b = document.createElement("div")
+      b.className = "bub"
+      const size = 20 + Math.random() * 110
+      b.style.width = b.style.height = size + "px"
+      b.style.left = Math.random() * 100 + "%"
+      const dur = 14 + Math.random() * 18
+      b.style.animationDuration = `${dur}s, ${4 + Math.random() * 4}s`
+      if (initial) b.style.animationDelay = `-${Math.random() * dur}s, -${Math.random() * 5}s`
+      b.style.setProperty("--dx", ((Math.random() * 240 - 120) | 0) + "px")
+      el.appendChild(b)
+      setTimeout(() => { if (b.parentNode) b.remove() }, dur * 1000)
+    }
+
+    for (let i = 0; i < 18; i++) makeBubble(true)
+    const interval = setInterval(() => makeBubble(false), 1100)
+    return () => clearInterval(interval)
+  }, [])
+
+  // ── Celebratory burst: 22 rising bubbles fired once on load ──
+  useEffect(() => {
+    const conf = confFieldRef.current
+    if (!conf) return
+    const cel = conf  // narrowed non-null ref for closures
+
+    function makeCelebBubble() {
+      const b = document.createElement("div")
+      b.className = "conf-bub"
+      const size = 12 + Math.random() * 70
+      b.style.width = b.style.height = size + "px"
+      b.style.left = Math.random() * 100 + "%"
+      b.style.bottom = (-20 - Math.random() * 20) + "%"
+      const dur = 7 + Math.random() * 9
+      b.style.animationDuration = dur + "s"
+      b.style.setProperty("--dx", ((Math.random() * 200 - 100) | 0) + "px")
+      cel.appendChild(b)
+      setTimeout(() => { if (b.parentNode) b.remove() }, dur * 1000)
+    }
+
+    for (let i = 0; i < 22; i++) setTimeout(() => makeCelebBubble(), i * 70)
+  }, [])
 
   const copyRef = useCallback(() => {
     if (!ref) return
@@ -290,64 +283,26 @@ export default function ConfirmationClient() {
       : Math.round(data.amountInCents / 100) - travelFeeEur
     : 0
   const discount = data?.isFirstTime ? Math.round(basePrice * 0.2) : 0
-
   const lieuDisplay = data
-    ? data.place === "cabinet"
-      ? `Cabinet · ${CABINET_ADDRESS}`
-      : `À domicile${data.address ? ` — ${data.address}` : ""}`
-    : "Cabinet · Lyon 7ᵉ"
-
-  const lieuMapsUrl = data
-    ? data.place === "cabinet"
-      ? CABINET_MAPS_URL
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.address)}`
+    ? data.place === "cabinet" ? `Cabinet · ${CABINET_ADDRESS}` : `À domicile${data.address ? ` — ${data.address}` : ""}`
+    : `Cabinet · ${CABINET_ADDRESS}`
+  const lieuMapsUrl = data?.place === "domicile" && data.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.address)}`
     : CABINET_MAPS_URL
-
   const paidPillLabel = data?.cardBrand && data?.cardLast4
     ? `Payé · ${data.cardBrand} •• ${data.cardLast4}`
     : "Paiement confirmé"
 
   return (
     <div className="ok-bg">
-      {/* Ambient bubble field */}
-      <div className="bub-field" aria-hidden>
-        {AMBIENT.map((b, i) => (
-          <div
-            key={i}
-            className="bub"
-            style={{
-              width: b.size,
-              height: b.size,
-              left: `${b.left}%`,
-              animationDuration: `${b.dur}s, 5s`,
-              animationDelay: `${b.delay}s, ${b.delay * 0.5}s`,
-              ["--dx" as string]: `${b.dx}px`,
-            }}
-          />
-        ))}
-      </div>
 
-      {/* Confetti burst */}
-      {CONFETTI.map((c, i) => {
-        const rad = (c.angle * Math.PI) / 180
-        return (
-          <motion.div
-            key={i}
-            style={{
-              position: "fixed", top: "40%", left: "50%",
-              width: c.size, height: c.size,
-              borderRadius: "50%", background: c.color,
-              pointerEvents: "none", zIndex: 50,
-              marginLeft: -c.size / 2, marginTop: -c.size / 2,
-            }}
-            initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-            animate={{ x: Math.cos(rad) * c.dist, y: Math.sin(rad) * c.dist, scale: 0, opacity: 0 }}
-            transition={{ duration: 1.4, delay: c.delay, ease: [0.2, 0.7, 0.4, 1] }}
-          />
-        )
-      })}
+      {/* ── Ambient bubble field (persistent backdrop) ── */}
+      <div className="bub-field" ref={bubFieldRef} aria-hidden />
 
-      {/* Minimal header */}
+      {/* ── Celebratory rising bubbles (one-shot burst) ── */}
+      <div className="conf-field" ref={confFieldRef} aria-hidden />
+
+      {/* ── Minimal header ── */}
       <header className="ok-top">
         <Link href="/" className="ok-brand">
           <span className="dot" />
@@ -356,27 +311,38 @@ export default function ConfirmationClient() {
       </header>
 
       <div className="ok-page">
-        {/* Main celebration card */}
-        <div className="ok-card">
-          {/* Ray burst */}
-          <div className="burst" aria-hidden>
-            {Array.from({ length: 14 }, (_, i) => (
-              <div key={i} className="ray" style={{ ["--r" as string]: `${(360 / 14) * i}deg` }} />
-            ))}
-          </div>
 
-          {/* Check circle + eyebrow (side-by-side) */}
+        {/* ── Ray burst ── */}
+        <div className="burst" aria-hidden>
+          {Array.from({ length: 14 }, (_, i) => (
+            <div
+              key={i}
+              className="ray"
+              style={{
+                ["--r" as string]: `${(360 / 14) * i}deg`,
+                animationDelay: `${0.35 + i * 0.03}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* ════════════ MAIN CARD ════════════ */}
+        <div className="ok-card">
+
+          {/* Check circle + eyebrow side-by-side */}
           <div className="ok-head" style={{ marginBottom: 40 }}>
             <div className="check-wrap">
               <div className="check-rings"><span /><span /><span /></div>
               <div className="check-circle">
-                <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                <svg viewBox="0 0 32 32">
+                  <path d="M7 16.5 13.5 23 25 10" />
+                </svg>
               </div>
             </div>
             <span className="ok-eyebrow">Confirmation</span>
           </div>
 
-          {/* Title */}
+          {/* Title — word-by-word rise, last word italic terra */}
           <h1 className="ok-title">
             <span className="word"><span>Votre</span></span>{" "}
             <span className="word"><span>bulle</span></span>{" "}
@@ -397,11 +363,7 @@ export default function ConfirmationClient() {
           <div className="ref-pill">
             <span className="l">Référence</span>
             <span className="v">{ref || "—"}</span>
-            <button
-              className={`copy-btn${copied ? " copied" : ""}`}
-              onClick={copyRef}
-              title={copied ? "Copié !" : "Copier la référence"}
-            >
+            <button className={`copy-btn${copied ? " copied" : ""}`} onClick={copyRef} title="Copier la référence">
               {copied ? (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M5 13l4 4L19 7" />
@@ -426,7 +388,7 @@ export default function ConfirmationClient() {
             </button>
           </div>
 
-          {/* Calendar add buttons */}
+          {/* Calendar export row */}
           {data && (
             <div className="cal-row">
               <a href={googleCalUrl(data)} target="_blank" rel="noopener noreferrer" className="cal-btn">
@@ -453,7 +415,7 @@ export default function ConfirmationClient() {
           )}
         </div>
 
-        {/* ── Booking summary ── */}
+        {/* ════════════ BOOKING SUMMARY ════════════ */}
         {data && (
           <div className="conf-summary">
             <div className="conf-summary-head">
@@ -465,12 +427,14 @@ export default function ConfirmationClient() {
             </div>
 
             <div className="conf-booking">
+              {/* Left: booking details */}
               <div className="booking-main">
                 <h2>{data.serviceName}</h2>
-                <p className="booking-with">avec La Bulle De Vie</p>
+                <div className="booking-with">avec La Bulle De Vie</div>
                 <p style={{ color: "var(--mute)", fontSize: 14, marginBottom: 28, fontStyle: "italic" }}>
                   {data.serviceDur} min
                 </p>
+
                 <div className="info-list">
                   {/* Date */}
                   <div className="info-row">
@@ -478,10 +442,8 @@ export default function ConfirmationClient() {
                       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Date</div>
-                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
-                        {fmtDateLong(data.date)}
-                      </div>
+                      <div className="info-lbl">Date</div>
+                      <div className="info-val">{fmtDateLong(data.date)}</div>
                     </div>
                   </div>
 
@@ -491,48 +453,46 @@ export default function ConfirmationClient() {
                       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Heure · Durée</div>
-                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
-                        {fmtTime(data.time)} — {endTime(data.time, data.serviceDur)}{" "}
+                      <div className="info-lbl">Heure · Durée</div>
+                      <div className="info-val">
+                        {fmtTime(data.time)} — {calcEndTime(data.time, data.serviceDur)}{" "}
                         <span style={{ color: "var(--mute)", fontSize: 13 }}>({data.serviceDur} min)</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Lieu with map link */}
+                  {/* Lieu + map link */}
                   <div className="info-row">
                     <div className="ic-wrap">
-                      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                      <svg viewBox="0 0 24 24"><path d="M12 22s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="10" r="3"/></svg>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Lieu</div>
-                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
+                      <div className="info-lbl">Lieu</div>
+                      <div className="info-val">
                         {lieuDisplay}
                         {data.place === "cabinet" && (
-                          <>
-                            {" — "}
-                            <a
-                              href={lieuMapsUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: "var(--terra)", textDecoration: "none", fontStyle: "italic" }}
-                            >
-                              Voir le plan
-                            </a>
-                          </>
+                          <><br />
+                          <a
+                            href={lieuMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--terra)", textDecoration: "none", fontStyle: "italic", fontSize: 15 }}
+                          >
+                            Voir le plan
+                          </a></>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Phone contact */}
+                  {/* Phone */}
                   <div className="info-row">
                     <div className="ic-wrap">
                       <svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Une question ?</div>
-                      <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
+                      <div className="info-lbl">Une question ?</div>
+                      <div className="info-val">
                         <a
                           href={`tel:${SPECIALIST_PHONE.replace(/\s/g, "")}`}
                           style={{ color: "var(--terra)", textDecoration: "none", fontStyle: "italic" }}
@@ -545,6 +505,7 @@ export default function ConfirmationClient() {
                 </div>
               </div>
 
+              {/* Right: receipt */}
               <div className="booking-side">
                 <h4>Récapitulatif</h4>
                 <div className="receipt">
@@ -567,18 +528,15 @@ export default function ConfirmationClient() {
                 </div>
                 <div className="receipt-total">
                   <span className="rl">Total payé</span>
-                  <span className="rv">{totalEur}<small style={{ fontSize: "0.55em", marginLeft: 2 }}>€</small></span>
+                  <span className="rv">
+                    {totalEur}<small style={{ fontSize: "0.55em", marginLeft: 2 }}>€</small>
+                  </span>
                 </div>
-                <div className="paid-pill" style={{ marginTop: 14 }}>
-                  {paidPillLabel}
-                </div>
+                <div className="paid-pill" style={{ marginTop: 14 }}>{paidPillLabel}</div>
                 <a
                   href="#"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    marginTop: 18, fontSize: 13, color: "var(--terra)", textDecoration: "none",
-                  }}
                   onClick={(e) => e.preventDefault()}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 18, fontSize: 13, color: "var(--terra)", textDecoration: "none" }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>
@@ -590,30 +548,30 @@ export default function ConfirmationClient() {
           </div>
         )}
 
-        {/* ── Next steps ── */}
+        {/* ════════════ NEXT STEPS ════════════ */}
         <div className="next-steps">
           <h3>Et maintenant ?</h3>
           <p className="ns-sub">Trois petites choses pour préparer votre séance en douceur.</p>
           <div className="steps-grid">
             <div className="conf-step">
-              <div className="num">01.</div>
+              <div className="num">01</div>
               <h4>Lisez vos préférences</h4>
               <p>Allergies, pression préférée, ambiance souhaitée — nous les relisons toujours avant la séance. Mettez‑les à jour si besoin.</p>
             </div>
             <div className="conf-step">
-              <div className="num">02.</div>
+              <div className="num">02</div>
               <h4>Pensez à hydrater</h4>
               <p>Buvez un grand verre d'eau au réveil et venez en tenue confortable. Pour le reste, tout est prévu sur place.</p>
             </div>
             <div className="conf-step">
-              <div className="num">03.</div>
+              <div className="num">03</div>
               <h4>Arrivez 5 minutes avant</h4>
               <p>Pour vous installer doucement, échanger un mot, et laisser tomber les épaules avant que la bulle commence.</p>
             </div>
           </div>
         </div>
 
-        {/* ── Account CTA ── */}
+        {/* ════════════ ACCOUNT CTA ════════════ */}
         <div className="acc-cta">
           <h3>
             Gérez vos rendez‑vous{" "}
@@ -633,6 +591,7 @@ export default function ConfirmationClient() {
           </div>
         </div>
 
+        {/* Footer */}
         <footer className="ok-foot">
           Besoin d'aide ? Écrivez à{" "}
           <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>

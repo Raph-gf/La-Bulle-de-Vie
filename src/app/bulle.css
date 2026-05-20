@@ -1215,7 +1215,7 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
     radial-gradient(circle at 30% 28%, #ffffffd8 0%, #ffffff40 25%, transparent 55%),
     radial-gradient(circle at 70% 75%, var(--terra-soft) 0%, transparent 50%);
   border:1px solid #ffffff70;
-  box-shadow: inset 0 0 24px #ffffff40, 0 8px 24px #2218121a;
+  box-shadow: inset 0 0 24px #ffffff40, inset 0 -8px 18px rgba(216,145,117,.08), 0 8px 24px #2218121a;
   opacity:.55;
   animation: bubFloat linear infinite, bubWobble 5s ease-in-out infinite;
 }
@@ -1233,6 +1233,26 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
 @keyframes bubWobble{
   0%,100%{margin-left:0}
   50%    {margin-left:18px}
+}
+
+/* Celebratory rising bubble confetti (one-shot burst on load) */
+.conf-field{position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none}
+.conf-bub{
+  position:absolute; border-radius:50%;
+  background: radial-gradient(circle at 30% 30%, #ffffffd0, #ffffff20 60%, transparent 75%);
+  border:1px solid #ffffff66;
+  animation: confRise linear forwards;
+}
+.conf-bub::before{
+  content:""; position:absolute; top:14%; left:18%;
+  width:22%; height:16%; border-radius:50%;
+  background:#ffffffbb; filter:blur(2px);
+}
+@keyframes confRise{
+  0%  {transform:translate3d(0,110vh,0) scale(.4); opacity:0}
+  8%  {opacity:.7}
+  90% {opacity:.55}
+  100%{transform:translate3d(var(--dx,30px),-20vh,0) scale(1); opacity:0}
 }
 
 /* Top bar */
