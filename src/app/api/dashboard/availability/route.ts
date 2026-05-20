@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   })
 
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  today.setUTCHours(0, 0, 0, 0)
 
   await prisma.availabilitySlot.deleteMany({
     where: { date: { gte: today }, isBooked: false },
@@ -103,8 +103,8 @@ export async function POST(req: NextRequest) {
 
   for (let i = 0; i < 60; i++) {
     const d = new Date(today)
-    d.setDate(today.getDate() + i)
-    const dowKey = DOW_TO_KEY[d.getDay()]
+    d.setUTCDate(today.getUTCDate() + i)
+    const dowKey = DOW_TO_KEY[d.getUTCDay()]
     if (!WORK_DAYS.has(dowKey)) continue
 
     const daySched = body[dowKey as keyof typeof body] as DaySchedule | undefined
