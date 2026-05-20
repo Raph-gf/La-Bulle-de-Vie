@@ -522,7 +522,7 @@ function ConnexionPage() {
       setLoading(false)
       return
     }
-    const redirectTo = searchParams.get("redirectTo") ?? "/compte"
+    const redirectTo = searchParams.get("redirectTo") ?? "/"
     router.push(redirectTo)
   }
 
