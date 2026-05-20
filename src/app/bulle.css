@@ -1261,7 +1261,7 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
 .ok-brand .dot{width:10px; height:10px; border-radius:50%; background:radial-gradient(circle at 30% 30%,#fff,var(--terra) 70%); box-shadow:0 0 12px var(--terra-soft); animation:pulse 3s ease-in-out infinite; flex-shrink:0}
 
 /* Page layout */
-.ok-page{max-width:920px; margin:0 auto; padding:32px 32px 80px; position:relative; z-index:1}
+.ok-page{max-width:920px; margin:0 auto; padding:32px 32px 80px; position:relative}
 
 /* Ray burst */
 .burst{position:absolute; top:140px; left:50%; transform:translate(-50%,-50%); z-index:1; width:200px; height:200px; pointer-events:none}
