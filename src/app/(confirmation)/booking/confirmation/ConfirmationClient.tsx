@@ -204,10 +204,13 @@ export default function ConfirmationClient() {
   }, [params])
 
   // ── Ambient bubble field: 18 initial + 1 every 1.1s (mirrors design JS exactly) ──
+  // Depends on `status` so the effect re-runs once the confirmed JSX (with the ref) is mounted.
+  // On the initial "loading" render the bub-field div doesn't exist yet → bubFieldRef is null.
   useEffect(() => {
+    if (status !== "confirmed") return
     const field = bubFieldRef.current
     if (!field) return
-    const el = field  // narrowed non-null ref for closures
+    const el = field
 
     function makeBubble(initial = false) {
       const b = document.createElement("div")
@@ -226,13 +229,14 @@ export default function ConfirmationClient() {
     for (let i = 0; i < 18; i++) makeBubble(true)
     const interval = setInterval(() => makeBubble(false), 1100)
     return () => clearInterval(interval)
-  }, [])
+  }, [status])
 
-  // ── Celebratory burst: 22 rising bubbles fired once on load ──
+  // ── Celebratory burst: 22 rising bubbles fired once when confirmed ──
   useEffect(() => {
+    if (status !== "confirmed") return
     const conf = confFieldRef.current
     if (!conf) return
-    const cel = conf  // narrowed non-null ref for closures
+    const cel = conf
 
     function makeCelebBubble() {
       const b = document.createElement("div")
@@ -249,7 +253,7 @@ export default function ConfirmationClient() {
     }
 
     for (let i = 0; i < 22; i++) setTimeout(() => makeCelebBubble(), i * 70)
-  }, [])
+  }, [status])
 
   const copyRef = useCallback(() => {
     if (!ref) return
