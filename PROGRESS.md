@@ -138,13 +138,14 @@
 
 ### Specialist availability (prerequisite)
 - ✅ Specialist sets weekly working hours in dashboard (`/dashboard/disponibilites`)
-  - Toggle each day (Mon–Sat), set start/end time per day
+  - Toggle each day (Mon–**Sun**), set start/end time per day
   - Choose slot duration: 30 / 45 / 60 / 90 min
   - Optional lunch break time range
   - Live slot count preview per day + weekly total
   - "Générer les créneaux" → generates real `availability_slots` rows for next 60 days
   - `GET /api/dashboard/availability` — load saved schedule + upcoming slot count
   - `POST /api/dashboard/availability` — save schedule + regenerate slots
+  - Bug fixed: Sunday was missing from `DayKey` type, `DAY_LABELS`, `DAYS` array, `DEFAULT` schedule, API `WORK_DAYS` set, and validation loop
 - ⬜ Specialist can block specific dates / add one-off slots
 
 ### Booking wizard wiring
@@ -172,7 +173,15 @@
   - `payment_intent.succeeded` → sets appointment `status: confirmed` + stores `amountPaid`
   - `payment_intent.payment_failed` → cancels appointment + frees slot (`isBooked: false`)
   - Uses `appointmentId` from PaymentIntent metadata for all lookups
-- ⬜ Appointment confirmation / receipt page (shown after redirect from 3DS)
+- ✅ Appointment confirmation / receipt page (`/booking/confirmation`)
+  - Full-page design with living bubble backdrop (DOM-spawned, continuous — mirrors claude.ai/design exactly)
+  - Celebratory one-shot burst of rising bubbles on load
+  - Staggered fade-in for eyebrow, subtitle, CTAs, calendar row
+  - Booking summary card (glassmorphism), "Et maintenant ?" steps, account CTA
+  - Google Calendar / Apple Calendar / .ics export buttons
+  - Full-width `<hr>` divider + transparent footer floating over bubbles
+  - Race condition handled: polls `/api/booking/status` until `confirmed` or `refunded`; shows refund screen if payment failed
+  - Bug fixed: bubble effects now depend on `[status]` — refs were null during loading state
 
 ### Cancellation & refunds
 - ⬜ Client can cancel from `/compte#appts` → trigger Stripe refund based on cancellation policy
@@ -384,9 +393,9 @@
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 4 — Booking + Stripe
+## Current phase: Phase 5 — Notifications
 ## Last session: 2026-05-20
-## Next step: Cancellation/refund flow + email notifications (Resend)
+## Next step: Email notifications via Resend (booking confirmation to client + instant alert to specialist)
 
 ---
 
