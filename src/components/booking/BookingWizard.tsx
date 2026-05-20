@@ -254,7 +254,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
 
   useEffect(() => {
     if (!date) return
-    const iso = date.toISOString().split("T")[0]
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
     setSlotsLoading(true)
     setAvailableSlots([])
     fetch(`/api/booking/availability/slots?date=${iso}`)
@@ -350,7 +350,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
         paymentIntentId,
         serviceName: svc.name,
         serviceDur: svc.dur,
-        date: date?.toISOString().split("T")[0] ?? "",
+        date: date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "",
         time: time ?? "",
         place: info.place,
         address: info.address,
