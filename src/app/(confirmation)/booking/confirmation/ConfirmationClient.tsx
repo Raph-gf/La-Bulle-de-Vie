@@ -20,16 +20,31 @@ type BookingData = {
   amountInCents: number
   travelFee: number | null
   isFirstTime: boolean
+  cardBrand?: string
+  cardLast4?: string
 }
 
 type PageStatus = "loading" | "confirmed" | "refunded"
 
 const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
+const SPECIALIST_PHONE = "06 25 48 60 56"
+const CABINET_ADDRESS = "12 rue des Capucins, 69007 Lyon"
+const CABINET_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CABINET_ADDRESS)}`
 
 function fmtDateLong(iso: string) {
   const d = new Date(iso + "T12:00:00")
   const dow = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"][d.getDay()]
   return `${dow} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function fmtTime(t: string) {
+  return t.replace(":", "h")
+}
+
+function endTime(time: string, dur: number): string {
+  const [h, m] = time.split(":").map(Number)
+  const total = h * 60 + m + dur
+  return `${Math.floor(total / 60)}h${String(total % 60).padStart(2, "0")}`
 }
 
 function makeICS(data: BookingData): string {
@@ -46,7 +61,7 @@ function makeICS(data: BookingData): string {
     `DTEND:${fmt(end)}`,
     `SUMMARY:${data.serviceName} — La Bulle De Vie`,
     `DESCRIPTION:Référence : ${data.ref}\\nE-mail de confirmation envoyé à ${data.email}`,
-    `LOCATION:${data.place === "cabinet" ? "Cabinet Lyon 7ème, Lyon" : data.address}`,
+    `LOCATION:${data.place === "cabinet" ? CABINET_ADDRESS : data.address}`,
     "STATUS:CONFIRMED",
     "END:VEVENT",
     "END:VCALENDAR",
@@ -62,7 +77,7 @@ function googleCalUrl(data: BookingData): string {
     text: `${data.serviceName} — La Bulle De Vie`,
     dates: `${fmt(d)}/${fmt(end)}`,
     details: `Référence : ${data.ref}`,
-    location: data.place === "cabinet" ? "Cabinet Lyon 7ème, Lyon" : data.address,
+    location: data.place === "cabinet" ? CABINET_ADDRESS : data.address,
   })
   return `https://calendar.google.com/calendar/render?${p.toString()}`
 }
@@ -125,50 +140,26 @@ function RefundedScreen({ data }: { data: BookingData | null }) {
       justifyContent: "center",
       padding: "40px 24px",
     }}>
-      {/* Icon */}
       <div style={{
-        width: 76,
-        height: 76,
-        borderRadius: "50%",
-        background: "#FDF0EB",
-        border: "2px solid #F4C8AE",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 32,
-        fontSize: 32,
+        width: 76, height: 76, borderRadius: "50%",
+        background: "#FDF0EB", border: "2px solid #F4C8AE",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        marginBottom: 32, fontSize: 32,
       }}>
         ⏱
       </div>
-
       <div style={{ maxWidth: 520, textAlign: "center" }}>
-        <span style={{
-          display: "inline-block",
-          fontSize: 11,
-          letterSpacing: ".22em",
-          textTransform: "uppercase",
-          color: "var(--mute)",
-          marginBottom: 16,
-        }}>
+        <span style={{ display: "inline-block", fontSize: 11, letterSpacing: ".22em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 16 }}>
           Créneau non disponible
         </span>
-
-        <h1 style={{
-          fontFamily: "var(--serif)",
-          fontSize: "clamp(32px, 5vw, 52px)",
-          lineHeight: 1.05,
-          fontWeight: 400,
-          marginBottom: 20,
-        }}>
+        <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.05, fontWeight: 400, marginBottom: 20 }}>
           Ce créneau vient<br />
           <span style={{ fontStyle: "italic", color: "var(--terra)" }}>d'être pris.</span>
         </h1>
-
         <p style={{ color: "var(--mute)", fontSize: 16, lineHeight: 1.65, marginBottom: 12 }}>
           Une autre réservation a été confirmée sur ce créneau au même moment que la vôtre.
           Votre paiement a été intégralement remboursé — aucun montant ne sera débité.
         </p>
-
         {data && (
           <p style={{ color: "var(--mute)", fontSize: 14, marginBottom: 36 }}>
             Le remboursement de{" "}
@@ -178,26 +169,13 @@ function RefundedScreen({ data }: { data: BookingData | null }) {
             apparaîtra sur votre relevé bancaire sous 3 à 5 jours ouvrés.
           </p>
         )}
-
-        {/* Info box */}
-        <div style={{
-          background: "#fff8f5",
-          border: "1px solid #F4C8AE",
-          borderRadius: 14,
-          padding: "20px 24px",
-          marginBottom: 36,
-          textAlign: "left",
-          display: "flex",
-          gap: 14,
-          alignItems: "flex-start",
-        }}>
+        <div style={{ background: "#fff8f5", border: "1px solid #F4C8AE", borderRadius: 14, padding: "20px 24px", marginBottom: 36, textAlign: "left", display: "flex", gap: 14, alignItems: "flex-start" }}>
           <span style={{ color: "var(--terra)", fontSize: 20, lineHeight: 1, flexShrink: 0 }}>ℹ</span>
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.6, margin: 0 }}>
             Retournez sur la page de réservation pour choisir un autre créneau disponible.
             Vos informations personnelles seront pré-remplies.
           </p>
         </div>
-
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/booking" className="btn primary">
             Choisir un autre créneau <span className="arrow">→</span>
@@ -207,8 +185,6 @@ function RefundedScreen({ data }: { data: BookingData | null }) {
           </Link>
         </div>
       </div>
-
-      {/* Footer */}
       <p style={{ marginTop: 48, fontSize: 12, color: "var(--mute)" }}>
         Une question ?{" "}
         <a href="mailto:contact@labulldevie.fr" style={{ color: "var(--terra)", textDecoration: "none" }}>
@@ -228,7 +204,7 @@ export default function ConfirmationClient() {
   const [status, setStatus] = useState<PageStatus>("loading")
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const attemptsRef = useRef(0)
-  const MAX_ATTEMPTS = 8 // ~12 seconds (every 1.5s)
+  const MAX_ATTEMPTS = 8
 
   useEffect(() => {
     const urlRef = params.get("ref") ?? ""
@@ -250,18 +226,15 @@ export default function ConfirmationClient() {
     }
 
     if (!piId) {
-      // No PI ID to check — assume confirmed (direct URL visit)
       setStatus("confirmed")
       return
     }
 
-    // Poll until webhook confirms or refunds
     async function checkStatus() {
       attemptsRef.current += 1
       try {
         const res = await fetch(`/api/booking/status?pi=${piId}`)
         const json = await res.json() as { status: string }
-
         if (json.status === "confirmed") {
           clearInterval(pollRef.current!)
           setStatus("confirmed")
@@ -269,7 +242,6 @@ export default function ConfirmationClient() {
           clearInterval(pollRef.current!)
           setStatus("refunded")
         } else if (attemptsRef.current >= MAX_ATTEMPTS) {
-          // Webhook very delayed — assume confirmed (optimistic)
           clearInterval(pollRef.current!)
           setStatus("confirmed")
         }
@@ -281,9 +253,8 @@ export default function ConfirmationClient() {
       }
     }
 
-    checkStatus() // immediate first check
+    checkStatus()
     pollRef.current = setInterval(checkStatus, 1500)
-
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [params])
 
@@ -291,7 +262,7 @@ export default function ConfirmationClient() {
     if (!ref) return
     navigator.clipboard.writeText(ref).then(() => {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), 1800)
     })
   }, [ref])
 
@@ -320,6 +291,22 @@ export default function ConfirmationClient() {
     : 0
   const discount = data?.isFirstTime ? Math.round(basePrice * 0.2) : 0
 
+  const lieuDisplay = data
+    ? data.place === "cabinet"
+      ? `Cabinet · ${CABINET_ADDRESS}`
+      : `À domicile${data.address ? ` — ${data.address}` : ""}`
+    : "Cabinet · Lyon 7ᵉ"
+
+  const lieuMapsUrl = data
+    ? data.place === "cabinet"
+      ? CABINET_MAPS_URL
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.address)}`
+    : CABINET_MAPS_URL
+
+  const paidPillLabel = data?.cardBrand && data?.cardLast4
+    ? `Payé · ${data.cardBrand} •• ${data.cardLast4}`
+    : "Paiement confirmé"
+
   return (
     <div className="ok-bg">
       {/* Ambient bubble field */}
@@ -347,25 +334,14 @@ export default function ConfirmationClient() {
           <motion.div
             key={i}
             style={{
-              position: "fixed",
-              top: "40%",
-              left: "50%",
-              width: c.size,
-              height: c.size,
-              borderRadius: "50%",
-              background: c.color,
-              pointerEvents: "none",
-              zIndex: 50,
-              marginLeft: -c.size / 2,
-              marginTop: -c.size / 2,
+              position: "fixed", top: "40%", left: "50%",
+              width: c.size, height: c.size,
+              borderRadius: "50%", background: c.color,
+              pointerEvents: "none", zIndex: 50,
+              marginLeft: -c.size / 2, marginTop: -c.size / 2,
             }}
             initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-            animate={{
-              x: Math.cos(rad) * c.dist,
-              y: Math.sin(rad) * c.dist,
-              scale: 0,
-              opacity: 0,
-            }}
+            animate={{ x: Math.cos(rad) * c.dist, y: Math.sin(rad) * c.dist, scale: 0, opacity: 0 }}
             transition={{ duration: 1.4, delay: c.delay, ease: [0.2, 0.7, 0.4, 1] }}
           />
         )
@@ -385,38 +361,35 @@ export default function ConfirmationClient() {
           {/* Ray burst */}
           <div className="burst" aria-hidden>
             {Array.from({ length: 14 }, (_, i) => (
-              <div
-                key={i}
-                className="ray"
-                style={{ ["--r" as string]: `${(360 / 14) * i}deg` }}
-              />
+              <div key={i} className="ray" style={{ ["--r" as string]: `${(360 / 14) * i}deg` }} />
             ))}
           </div>
 
-          {/* Check circle */}
-          <div className="check-wrap" style={{ marginBottom: 28 }}>
-            <div className="check-rings">
-              <span /><span /><span />
+          {/* Check circle + eyebrow (side-by-side) */}
+          <div className="ok-head" style={{ marginBottom: 40 }}>
+            <div className="check-wrap">
+              <div className="check-rings"><span /><span /><span /></div>
+              <div className="check-circle">
+                <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+              </div>
             </div>
-            <div className="check-circle">
-              <svg viewBox="0 0 24 24">
-                <path d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
+            <span className="ok-eyebrow">Confirmation</span>
           </div>
 
-          <div className="ok-head">
-            <span className="ok-eyebrow">Réservation confirmée</span>
-          </div>
-
+          {/* Title */}
           <h1 className="ok-title">
-            <span className="word"><span>Votre bulle</span></span>{" "}
-            <span className="word"><span>est</span></span>{" "}
-            <span className="word"><span>posée.</span></span>
+            <span className="word"><span>Votre</span></span>{" "}
+            <span className="word"><span>bulle</span></span>{" "}
+            <span className="word"><span>est&nbsp;posée.</span></span>
           </h1>
 
+          {/* Subtitle with inline email */}
           <p className="ok-sub">
-            Un e‑mail de confirmation vous a été envoyé.
+            Un e‑mail de confirmation vient de partir à{" "}
+            {data?.email
+              ? <strong style={{ color: "var(--ink)", fontWeight: 500 }}>{data.email}</strong>
+              : "votre adresse"
+            }.{" "}
             À très vite, et merci pour votre confiance.
           </p>
 
@@ -424,24 +397,29 @@ export default function ConfirmationClient() {
           <div className="ref-pill">
             <span className="l">Référence</span>
             <span className="v">{ref || "—"}</span>
-            <button className="copy-btn" onClick={copyRef} title={copied ? "Copié !" : "Copier la référence"}>
+            <button
+              className={`copy-btn${copied ? " copied" : ""}`}
+              onClick={copyRef}
+              title={copied ? "Copié !" : "Copier la référence"}
+            >
               {copied ? (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M5 13l4 4L19 7" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="11" height="11" rx="2"/>
+                  <path d="M5 15V5a2 2 0 0 1 2-2h10"/>
                 </svg>
               )}
             </button>
+            <span className={`copy-flash${copied ? " show" : ""}`}>Copié ✓</span>
           </div>
 
           {/* Primary CTAs */}
           <div className="ok-cta">
-            <Link href="/" className="btn primary">
-              Retour à l'accueil <span className="arrow">→</span>
+            <Link href="/compte" className="btn primary">
+              Voir mon espace <span className="arrow">→</span>
             </Link>
             <button className="btn" onClick={() => window.print()}>
               Imprimer la confirmation
@@ -451,44 +429,37 @@ export default function ConfirmationClient() {
           {/* Calendar add buttons */}
           {data && (
             <div className="cal-row">
-              <a
-                href={googleCalUrl(data)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cal-btn"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <path d="M16 2v4M8 2v4M3 10h18"/>
+              <a href={googleCalUrl(data)} target="_blank" rel="noopener noreferrer" className="cal-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <rect x="3" y="5" width="18" height="16" rx="2"/>
+                  <path d="M3 10h18M8 3v4M16 3v4"/>
                 </svg>
-                Google Agenda
+                Ajouter à Google Calendar
               </a>
               <button className="cal-btn" onClick={downloadICS}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <path d="M16 2v4M8 2v4M3 10h18"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <rect x="3" y="5" width="18" height="16" rx="2"/>
+                  <path d="M3 10h18M8 3v4M16 3v4"/>
                 </svg>
-                Apple Calendrier
+                Ajouter à Apple Calendar
               </button>
               <button className="cal-btn" onClick={downloadICS}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M12 2v9m0 0l-3-3m3 3l3-3M3 17l1.5 4h15L21 17"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>
                 </svg>
-                Fichier .ics
+                Télécharger .ics
               </button>
             </div>
           )}
         </div>
 
-        {/* Booking summary */}
+        {/* ── Booking summary ── */}
         {data && (
           <div className="conf-summary">
             <div className="conf-summary-head">
               <div>
-                <h3>Récapitulatif de votre réservation</h3>
-                <div className="conf-summary-meta">
-                  {data.serviceName} · {data.serviceDur} min
-                </div>
+                <h3>Détails de votre séance</h3>
+                <div className="conf-summary-meta">Réservation confirmée · paiement reçu</div>
               </div>
               <div className="paid-pill">Confirmé</div>
             </div>
@@ -496,17 +467,15 @@ export default function ConfirmationClient() {
             <div className="conf-booking">
               <div className="booking-main">
                 <h2>{data.serviceName}</h2>
-                <p className="booking-with">Avec La Bulle De Vie</p>
+                <p className="booking-with">avec La Bulle De Vie</p>
                 <p style={{ color: "var(--mute)", fontSize: 14, marginBottom: 28, fontStyle: "italic" }}>
                   {data.serviceDur} min
                 </p>
                 <div className="info-list">
+                  {/* Date */}
                   <div className="info-row">
                     <div className="ic-wrap">
-                      <svg viewBox="0 0 24 24">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                        <path d="M16 2v4M8 2v4M3 10h18"/>
-                      </svg>
+                      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
                     </div>
                     <div>
                       <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Date</div>
@@ -515,74 +484,72 @@ export default function ConfirmationClient() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Heure · Durée (combined) */}
                   <div className="info-row">
                     <div className="ic-wrap">
-                      <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9"/>
-                        <path d="M12 7v5l3 2"/>
-                      </svg>
+                      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Heure</div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Heure · Durée</div>
                       <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
-                        {data.time.replace(":", "h")}
+                        {fmtTime(data.time)} — {endTime(data.time, data.serviceDur)}{" "}
+                        <span style={{ color: "var(--mute)", fontSize: 13 }}>({data.serviceDur} min)</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Lieu with map link */}
                   <div className="info-row">
                     <div className="ic-wrap">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/>
-                        <circle cx="12" cy="9" r="2.5"/>
-                      </svg>
+                      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
                     </div>
                     <div>
                       <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Lieu</div>
                       <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
-                        {data.place === "cabinet"
-                          ? "Cabinet · Lyon 7ᵉ"
-                          : `À domicile${data.address ? ` — ${data.address}` : ""}`}
+                        {lieuDisplay}
+                        {data.place === "cabinet" && (
+                          <>
+                            {" — "}
+                            <a
+                              href={lieuMapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "var(--terra)", textDecoration: "none", fontStyle: "italic" }}
+                            >
+                              Voir le plan
+                            </a>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Phone contact */}
                   <div className="info-row">
                     <div className="ic-wrap">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                      </svg>
+                      <svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Client</div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Une question ?</div>
                       <div style={{ fontFamily: "var(--serif)", fontSize: 18, marginTop: 2 }}>
-                        {data.firstName} {data.lastName}
+                        <a
+                          href={`tel:${SPECIALIST_PHONE.replace(/\s/g, "")}`}
+                          style={{ color: "var(--terra)", textDecoration: "none", fontStyle: "italic" }}
+                        >
+                          {SPECIALIST_PHONE}
+                        </a>
                       </div>
                     </div>
                   </div>
-                  {data.email && (
-                    <div className="info-row">
-                      <div className="ic-wrap">
-                        <svg viewBox="0 0 24 24">
-                          <rect x="2" y="4" width="20" height="16" rx="2"/>
-                          <path d="m2 7 10 7 10-7"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mute)" }}>Confirmation envoyée à</div>
-                        <div style={{ fontFamily: "var(--serif)", fontSize: 16, marginTop: 2 }}>
-                          {data.email}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
               <div className="booking-side">
-                <h4>Détail du paiement</h4>
+                <h4>Récapitulatif</h4>
                 <div className="receipt">
                   <div className="receipt-row">
-                    <span className="rl">{data.serviceName}</span>
+                    <span className="rl">{data.serviceName} · {data.serviceDur} min</span>
                     <span className="rv">{basePrice} €</span>
                   </div>
                   {travelFeeEur > 0 && (
@@ -603,44 +570,57 @@ export default function ConfirmationClient() {
                   <span className="rv">{totalEur}<small style={{ fontSize: "0.55em", marginLeft: 2 }}>€</small></span>
                 </div>
                 <div className="paid-pill" style={{ marginTop: 14 }}>
-                  Paiement confirmé
+                  {paidPillLabel}
                 </div>
+                <a
+                  href="#"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    marginTop: 18, fontSize: 13, color: "var(--terra)", textDecoration: "none",
+                  }}
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>
+                  </svg>
+                  Télécharger la facture PDF
+                </a>
               </div>
             </div>
           </div>
         )}
 
-        {/* Next steps */}
+        {/* ── Next steps ── */}
         <div className="next-steps">
           <h3>Et maintenant ?</h3>
-          <p className="ns-sub">Quelques détails pour que votre séance soit parfaite.</p>
+          <p className="ns-sub">Trois petites choses pour préparer votre séance en douceur.</p>
           <div className="steps-grid">
             <div className="conf-step">
               <div className="num">01.</div>
-              <h4>E‑mail de confirmation</h4>
-              <p>Un récapitulatif complet avec l'adresse du cabinet et toutes les infos vous attend dans votre boîte mail.</p>
+              <h4>Lisez vos préférences</h4>
+              <p>Allergies, pression préférée, ambiance souhaitée — nous les relisons toujours avant la séance. Mettez‑les à jour si besoin.</p>
             </div>
             <div className="conf-step">
               <div className="num">02.</div>
-              <h4>Préparez-vous</h4>
-              <p>Venez confortable, sans parfum. Prévoyez quelques minutes de marge — la séance commence à l'heure.</p>
+              <h4>Pensez à hydrater</h4>
+              <p>Buvez un grand verre d'eau au réveil et venez en tenue confortable. Pour le reste, tout est prévu sur place.</p>
             </div>
             <div className="conf-step">
               <div className="num">03.</div>
-              <h4>Rappel SMS 24h avant</h4>
-              <p>Vous recevrez un SMS la veille avec un lien pour confirmer ou annuler sans frais jusqu'à minuit.</p>
+              <h4>Arrivez 5 minutes avant</h4>
+              <p>Pour vous installer doucement, échanger un mot, et laisser tomber les épaules avant que la bulle commence.</p>
             </div>
           </div>
         </div>
 
-        {/* Account CTA */}
+        {/* ── Account CTA ── */}
         <div className="acc-cta">
           <h3>
-            Gérez vos rendez-vous{" "}
+            Gérez vos rendez‑vous{" "}
             <span style={{ fontStyle: "italic", color: "var(--terra)" }}>en un clic.</span>
           </h3>
           <p>
-            Créez un compte gratuit pour consulter vos réservations, annuler facilement et retrouver vos factures
+            Créez un compte pour consulter vos réservations, annuler facilement et retrouver vos factures
             — sans jamais ressaisir vos informations.
           </p>
           <div className="acc-cta-row">
@@ -654,13 +634,12 @@ export default function ConfirmationClient() {
         </div>
 
         <footer className="ok-foot">
-          <p>
-            <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>
-            {" · "}
-            <Link href="/contact">Contact</Link>
-            {" · "}
-            La Bulle De Vie — Lyon 7ᵉ
-          </p>
+          Besoin d'aide ? Écrivez à{" "}
+          <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>
+          {" "}ou appelez le{" "}
+          <a href={`tel:${SPECIALIST_PHONE.replace(/\s/g, "")}`}>{SPECIALIST_PHONE}</a>.
+          <br />
+          © 2026 La bulle de vie — Tous droits réservés.
         </footer>
       </div>
     </div>
