@@ -576,7 +576,6 @@ export default function ConfirmationClient() {
         </div>
 
         {/* ════════════ ACCOUNT CTA ════════════ */}
-        <hr className="ok-divider" />
         <div className="acc-cta">
           <h3>
             Gérez vos rendez‑vous{" "}
@@ -596,16 +595,17 @@ export default function ConfirmationClient() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="ok-foot">
-          Besoin d'aide ? Écrivez à{" "}
-          <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>
-          {" "}ou appelez le{" "}
-          <a href={`tel:${SPECIALIST_PHONE.replace(/\s/g, "")}`}>{SPECIALIST_PHONE}</a>.
-          <br />
-          © 2026 La bulle de vie — Tous droits réservés.
-        </footer>
       </div>
+
+      <hr className="ok-foot-rule" />
+      <footer className="ok-foot">
+        Besoin d'aide ? Écrivez à{" "}
+        <a href="mailto:contact@labulldevie.fr">contact@labulldevie.fr</a>
+        {" "}ou appelez le{" "}
+        <a href={`tel:${SPECIALIST_PHONE.replace(/\s/g, "")}`}>{SPECIALIST_PHONE}</a>.
+        <br />
+        © 2026 La bulle de vie — Tous droits réservés.
+      </footer>
     </div>
   )
 }

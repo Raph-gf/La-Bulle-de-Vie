@@ -1377,15 +1377,15 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
 .conf-step p{font-size:13.5px; margin-top:8px; line-height:1.55; color:var(--mute)}
 
 /* Account CTA */
-.ok-divider{border:none; border-top:1px solid var(--line); margin:32px 0 0}
-.acc-cta{margin-top:0; padding:48px 40px; text-align:center; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.4s forwards; position:relative}
+.acc-cta{margin-top:32px; padding:48px 40px; text-align:center; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.4s forwards; position:relative}
 .acc-cta > *{position:relative; z-index:1}
 .acc-cta h3{font-size:clamp(24px,2.6vw,36px); margin-bottom:14px}
 .acc-cta p{color:var(--mute); margin:0 auto 28px; max-width:540px; line-height:1.6; font-size:15px}
 .acc-cta-row{display:flex; gap:12px; justify-content:center; flex-wrap:wrap}
 
 /* Footer */
-.ok-foot{margin-top:64px; padding-top:32px; border-top:1px solid var(--line); text-align:center; color:var(--mute); font-size:12px}
+.ok-foot-rule{border:none; border-top:1px solid var(--line); margin:0}
+.ok-foot{padding:32px 32px; text-align:center; color:var(--mute); font-size:12px}
 .ok-foot a{color:var(--terra); text-decoration:none}
 
 @media(max-width:760px){
