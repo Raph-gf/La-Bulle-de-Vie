@@ -10,6 +10,7 @@ type WeeklySchedule = {
   thu: DaySchedule
   fri: DaySchedule
   sat: DaySchedule
+  sun: DaySchedule
   slotDurationMin: number
   lunchStart?: string
   lunchEnd?: string
@@ -18,7 +19,7 @@ type WeeklySchedule = {
 const VALID_DURATIONS = [30, 45, 60, 90]
 const TIME_RE = /^\d{2}:\d{2}$/
 const DOW_TO_KEY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
-const WORK_DAYS = new Set(["mon", "tue", "wed", "thu", "fri", "sat"])
+const WORK_DAYS = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"])
 
 function timeToMinutes(t: string) {
   const [h, m] = t.split(":").map(Number)
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Durée de créneau invalide" }, { status: 400 })
   }
 
-  for (const key of ["mon", "tue", "wed", "thu", "fri", "sat"] as const) {
+  for (const key of ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const) {
     const d = body[key]
     if (!d || typeof d.enabled !== "boolean") continue
     if (d.enabled && (!TIME_RE.test(d.start) || !TIME_RE.test(d.end))) {

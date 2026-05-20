@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 
-type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat"
+type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
 type DaySchedule = { enabled: boolean; start: string; end: string }
 type WeeklySchedule = Record<DayKey, DaySchedule> & {
   slotDurationMin: number
@@ -12,9 +12,9 @@ type WeeklySchedule = Record<DayKey, DaySchedule> & {
 
 const DAY_LABELS: Record<DayKey, string> = {
   mon: "Lundi", tue: "Mardi", wed: "Mercredi",
-  thu: "Jeudi", fri: "Vendredi", sat: "Samedi",
+  thu: "Jeudi", fri: "Vendredi", sat: "Samedi", sun: "Dimanche",
 }
-const DAYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat"]
+const DAYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const DURATIONS = [30, 45, 60, 90]
 
 const DEFAULT: WeeklySchedule = {
@@ -24,6 +24,7 @@ const DEFAULT: WeeklySchedule = {
   thu: { enabled: true, start: "09:00", end: "18:00" },
   fri: { enabled: true, start: "09:00", end: "18:00" },
   sat: { enabled: false, start: "09:00", end: "13:00" },
+  sun: { enabled: false, start: "09:00", end: "13:00" },
   slotDurationMin: 60,
   lunchEnabled: true,
   lunchStart: "12:00",
