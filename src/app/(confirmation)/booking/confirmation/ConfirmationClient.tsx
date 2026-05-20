@@ -576,6 +576,7 @@ export default function ConfirmationClient() {
         </div>
 
         {/* ════════════ ACCOUNT CTA ════════════ */}
+        <hr className="ok-divider" />
         <div className="acc-cta">
           <h3>
             Gérez vos rendez‑vous{" "}

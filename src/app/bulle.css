@@ -1377,8 +1377,8 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
 .conf-step p{font-size:13.5px; margin-top:8px; line-height:1.55; color:var(--mute)}
 
 /* Account CTA */
-.acc-cta{margin-top:32px; background:linear-gradient(135deg,#E9DCC9d0 0%,#F1E7DAd0 100%); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid #ffffff80; border-radius:18px; padding:48px 40px; text-align:center; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.4s forwards; position:relative; overflow:hidden}
-.acc-cta::before{content:""; position:absolute; bottom:-40%; right:-15%; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle,var(--terra-soft) 0%,transparent 70%); opacity:.4}
+.ok-divider{border:none; border-top:1px solid var(--line); margin:32px 0 0}
+.acc-cta{margin-top:0; padding:48px 40px; text-align:center; opacity:0; transform:translateY(20px); animation:cardIn .8s cubic-bezier(.2,.7,.2,1) 2.4s forwards; position:relative}
 .acc-cta > *{position:relative; z-index:1}
 .acc-cta h3{font-size:clamp(24px,2.6vw,36px); margin-bottom:14px}
 .acc-cta p{color:var(--mute); margin:0 auto 28px; max-width:540px; line-height:1.6; font-size:15px}
