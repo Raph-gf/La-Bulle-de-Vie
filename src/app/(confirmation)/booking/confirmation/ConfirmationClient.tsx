@@ -395,21 +395,21 @@ export default function ConfirmationClient() {
           {/* Calendar export row */}
           {data && (
             <div className="cal-row">
-              <a href={googleCalUrl(data)} target="_blank" rel="noopener noreferrer" className="cal-btn">
+              <a href={googleCalUrl(data)} target="_blank" rel="noopener noreferrer" className="conf-export-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
                   <rect x="3" y="5" width="18" height="16" rx="2"/>
                   <path d="M3 10h18M8 3v4M16 3v4"/>
                 </svg>
                 Ajouter à Google Calendar
               </a>
-              <button className="cal-btn" onClick={downloadICS}>
+              <button className="conf-export-btn" onClick={downloadICS}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
                   <rect x="3" y="5" width="18" height="16" rx="2"/>
                   <path d="M3 10h18M8 3v4M16 3v4"/>
                 </svg>
                 Ajouter à Apple Calendar
               </button>
-              <button className="cal-btn" onClick={downloadICS}>
+              <button className="conf-export-btn" onClick={downloadICS}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>
                 </svg>
