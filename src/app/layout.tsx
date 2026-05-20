@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -33,7 +34,22 @@ export default function RootLayout({
       className={`${cormorant.variable} ${manrope.variable}`}
       data-scroll-behavior="smooth"
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          duration={4000}
+          toastOptions={{
+            style: {
+              fontFamily: "var(--font-sans, Manrope, sans-serif)",
+              fontSize: "14px",
+              borderRadius: "12px",
+            },
+          }}
+        />
+      </body>
     </html>
   );
 }

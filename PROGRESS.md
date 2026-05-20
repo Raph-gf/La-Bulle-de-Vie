@@ -230,14 +230,29 @@
 - ⬜ Welcome discount (−20%) — auto-applied on first booking via `isFirstVisit` flag
 - ⬜ Loyalty reward — flag on profile at 10th confirmed appointment, specialist manually redeems
 
-### Error handling (to implement per route in Phase 4+)
+### Toast notifications — `sonner` ✅ (2026-05-21)
+- ✅ `sonner` installed — single `<Toaster position="top-right" richColors />` in root layout
+- ✅ Hand-rolled toast systems removed from `disponibilites`, `parametres`, `compte` — replaced with `toast.success/error/warning`
+- ✅ `BookingWizard`: slot taken (409) → `toast.error` + auto-jumps to step 2; payment failed → toast + inline error; network errors → toast on dates/slots fetch and booking submit
+
+### Error handling (remaining)
 - ⬜ Consistent API error format: `{ error: string, code?: string, fieldErrors?: Record<string, string[]> }`
-- ⬜ Race condition on slot booking — catch Prisma unique constraint error (`P2002`), return "Ce créneau vient d'être pris"
-- ⬜ Stripe payment failed webhook (`payment_intent.payment_failed`) — cancel appointment, free slot
-- ⬜ Stripe error codes → French user messages (card_declined, insufficient_funds, expired_card, incorrect_cvc)
-- ⬜ Stripe webhook signature verification on every webhook route
+- ⬜ Stripe error codes → French user messages (card_declined, insufficient_funds, expired_card, incorrect_cvc) — map in PaymentForm
 - ⬜ Never expose raw Prisma/DB errors to client — log server-side, return generic message
-- ⬜ React error boundary on booking wizard and `/compte` page
+- ⬜ React error boundary on booking wizard and `/compte` page — catch unexpected render crashes
+- ⬜ Contact form (`/contact`) → `toast.success` on send, `toast.error` on failure (wired once Resend is set up)
+- ⬜ Newsletter form → `toast.success` / `toast.error`
+- ⬜ Dashboard TanStack Query error states → `toast.error` on query failure (currently silently fails)
+
+### Skeleton loading states (planned)
+- ⬜ **Booking wizard — Step 2 calendar**: replace `datesLoading` spinner with a skeleton calendar grid (7 columns × 5 rows of grey pill-shaped tiles)
+- ⬜ **Booking wizard — Step 3 slots**: replace `slotsLoading` spinner with 6 skeleton slot pills
+- ⬜ **Dashboard accueil KPI tiles**: 4 skeleton tiles (width 100%, height 80px, shimmer animation) shown while TanStack Query `isPending`
+- ⬜ **Dashboard "Le programme du jour" card**: skeleton rows (avatar circle + two lines) while `isPending`
+- ⬜ **Dashboard agenda week view**: full-height skeleton grid while appointments load
+- ⬜ **`/compte` appointments view**: 3 skeleton appointment cards while `apptsLoading`
+- ⬜ Shared `<Skeleton>` primitive — `src/components/ui/Skeleton.tsx` — accepts `width`, `height`, `className`; uses CSS `@keyframes shimmer` (gradient sweep left→right)
+- ⬜ Shimmer animation in `bulle.css` — `@keyframes shimmer { from { background-position: -200% 0 } to { background-position: 200% 0 } }` with a warm cream-to-beige gradient matching the design system
 
 ### Input security
 - ✅ `src/lib/validation.ts` — shared Zod schemas for all user inputs
@@ -400,6 +415,7 @@
 ## Current phase: Phase 5 — Notifications
 ## Last session: 2026-05-21
 ## Next step: Email notifications via Resend (booking confirmation to client + instant alert to specialist)
+## Also done this session: Sonner toast system, cal-btn CSS collision fix, confirmation page calendar buttons
 
 ---
 

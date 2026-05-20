@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
+import { toast } from "sonner"
 import { loadStripe } from "@stripe/stripe-js"
 import {
   Elements,
@@ -68,7 +69,9 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
     })
 
     if (error) {
-      setPayError(error.message ?? "Le paiement a échoué. Veuillez réessayer.")
+      const msg = error.message ?? "Le paiement a échoué. Veuillez réessayer."
+      setPayError(msg)
+      toast.error(msg)
       setPaying(false)
       return
     }
@@ -96,7 +99,9 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
 
     if (error) {
       event.paymentFailed({ reason: "fail" })
-      setPayError(error.message ?? "Le paiement a échoué.")
+      const msg = error.message ?? "Le paiement a échoué."
+      setPayError(msg)
+      toast.error(msg)
       setPaying(false)
     } else if (paymentIntent?.status === "succeeded") {
       onSuccess()
@@ -249,6 +254,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     fetch("/api/booking/availability/dates")
       .then((r) => r.json())
       .then((data) => setAvailableDates(new Set(data.dates ?? [])))
+      .catch(() => toast.error("Impossible de charger les disponibilités"))
       .finally(() => setDatesLoading(false))
   }, [])
 
@@ -260,6 +266,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
     fetch(`/api/booking/availability/slots?date=${iso}`)
       .then((r) => r.json())
       .then((data) => setAvailableSlots(data.slots ?? []))
+      .catch(() => toast.error("Impossible de charger les créneaux"))
       .finally(() => setSlotsLoading(false))
   }, [date])
 
@@ -336,7 +343,12 @@ export default function BookingWizard({ serviceId, userData }: Props) {
       })
       const data = await res.json()
       if (!res.ok) {
-        setSubmitError(data.error ?? "Erreur inattendue")
+        if (res.status === 409) {
+          toast.error("Ce créneau vient d'être pris — choisissez un autre horaire.", { duration: 6000 })
+          goTo(2)
+        } else {
+          setSubmitError(data.error ?? "Erreur inattendue")
+        }
         return
       }
       setRefCode(data.ref)
@@ -364,6 +376,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
       }))
       goTo(5)
     } catch {
+      toast.error("Erreur réseau — vérifiez votre connexion et réessayez.")
       setSubmitError("Erreur réseau. Vérifiez votre connexion et réessayez.")
     } finally {
       setSubmitting(false)

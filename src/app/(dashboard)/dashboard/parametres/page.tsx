@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { DEFAULT_TRAVEL_PRICING, TravelZone } from "@/lib/geo"
 
 type TravelPricing = { zones: TravelZone[]; maxDistanceKm: number }
@@ -15,7 +16,6 @@ export default function ParametresPage() {
   const [tax, setTax] = useState<TaxSettings>(DEFAULT_TAX)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   useEffect(() => {
     fetch("/api/dashboard/settings")
@@ -27,14 +27,12 @@ export default function ParametresPage() {
         if (d.travelPricing) setTravel(d.travelPricing as TravelPricing)
         if (d.taxSettings) setTax(d.taxSettings as TaxSettings)
       })
-      .catch((err) => console.error("[parametres] fetch error:", err))
+      .catch((err) => {
+        console.error("[parametres] fetch error:", err)
+        toast.error("Impossible de charger les paramètres")
+      })
       .finally(() => setLoading(false))
   }, [])
-
-  function showToast(msg: string, ok: boolean) {
-    setToast({ msg, ok })
-    setTimeout(() => setToast(null), 4000)
-  }
 
   async function handleSave() {
     setSaving(true)
@@ -51,14 +49,14 @@ export default function ParametresPage() {
       if (data.cabinetLng) setCabinetLng(data.cabinetLng)
 
       if (data.geocodeStatus === "failed") {
-        showToast("Paramètres enregistrés — adresse introuvable sur OpenStreetMap, vérifiez la saisie.", false)
+        toast.warning("Paramètres enregistrés — adresse introuvable sur OpenStreetMap, vérifiez la saisie.")
       } else if (data.geocodeStatus === "ok") {
-        showToast(`Paramètres enregistrés · Coordonnées : ${data.cabinetLat?.toFixed(4)}, ${data.cabinetLng?.toFixed(4)}`, true)
+        toast.success(`Paramètres enregistrés · Coordonnées : ${data.cabinetLat?.toFixed(4)}, ${data.cabinetLng?.toFixed(4)}`)
       } else {
-        showToast("Paramètres enregistrés.", true)
+        toast.success("Paramètres enregistrés.")
       }
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : "Erreur inattendue", false)
+      toast.error(e instanceof Error ? e.message : "Erreur inattendue")
     } finally {
       setSaving(false)
     }
@@ -304,12 +302,6 @@ export default function ParametresPage() {
         </div>
       </div>
 
-      {toast && (
-        <div className={`toast show`} style={{ background: toast.ok ? "var(--ink)" : "var(--terra)" }}>
-          <span className="ic">{toast.ok ? "✓" : "✕"}</span>
-          {toast.msg}
-        </div>
-      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
 type DaySchedule = { enabled: boolean; start: string; end: string }
@@ -36,7 +37,6 @@ export default function DisponibilitesPage() {
   const [upcomingCount, setUpcomingCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   useEffect(() => {
     fetch("/api/dashboard/availability")
@@ -49,17 +49,15 @@ export default function DisponibilitesPage() {
         if (data.weeklySchedule) setSchedule({ ...DEFAULT, ...data.weeklySchedule } as WeeklySchedule)
         setUpcomingCount(data.upcomingSlotCount ?? 0)
       })
-      .catch((err) => console.error("[disponibilites] fetch error:", err))
+      .catch((err) => {
+        console.error("[disponibilites] fetch error:", err)
+        toast.error("Impossible de charger les disponibilités")
+      })
       .finally(() => setLoading(false))
   }, [])
 
   function setDay(key: DayKey, patch: Partial<DaySchedule>) {
     setSchedule((s) => ({ ...s, [key]: { ...s[key], ...patch } }))
-  }
-
-  function showToast(msg: string, ok: boolean) {
-    setToast({ msg, ok })
-    setTimeout(() => setToast(null), 3500)
   }
 
   async function handleSave() {
@@ -75,9 +73,9 @@ export default function DisponibilitesPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setUpcomingCount(data.generated)
-      showToast(`${data.generated} créneaux générés pour les 60 prochains jours`, true)
+      toast.success(`${data.generated} créneaux générés pour les 60 prochains jours`)
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : "Erreur inattendue", false)
+      toast.error(e instanceof Error ? e.message : "Erreur inattendue")
     } finally {
       setSaving(false)
     }
@@ -249,13 +247,6 @@ export default function DisponibilitesPage() {
         </div>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className={`toast show`} style={{ background: toast.ok ? "var(--ink)" : "var(--terra)" }}>
-          <span className="ic">{toast.ok ? "✓" : "✕"}</span>
-          {toast.msg}
-        </div>
-      )}
     </div>
   )
 }

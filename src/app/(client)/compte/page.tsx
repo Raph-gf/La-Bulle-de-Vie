@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 type View = "overview" | "appts" | "history" | "favorites" | "preferences" | "payments" | "gifts" | "settings"
 const ALL_VIEWS: View[] = ["overview", "appts", "history", "favorites", "preferences", "payments", "gifts", "settings"]
@@ -28,7 +29,6 @@ export default function ComptePage() {
   const router = useRouter()
   const [view, setView] = useState<View>("overview")
   const [sideOpen, setSideOpen] = useState(false)
-  const [toast, setToast] = useState("")
   const [userName, setUserName] = useState("Chargement…")
   const [userEmail, setUserEmail] = useState("")
   const [userInitial, setUserInitial] = useState("?")
@@ -79,11 +79,6 @@ export default function ComptePage() {
     setSideOpen(false)
     window.history.replaceState({}, "", "#" + v)
     window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  function showToast(msg: string) {
-    setToast(msg)
-    setTimeout(() => setToast(""), 2400)
   }
 
   async function handleLogout() {
@@ -315,9 +310,7 @@ export default function ComptePage() {
         .btn-danger:hover{background:#8B4427;color:#fff}
         .btn-save{padding:12px 26px;border:none;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--sans);font-size:14px;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:8px}
         .btn-save:hover{background:var(--terra);transform:translateY(-1px)}
-        .toast-bar{position:fixed;bottom:24px;right:24px;z-index:100;background:var(--ink);color:#fff;padding:14px 20px;border-radius:999px;font-size:14px;box-shadow:0 18px 40px -16px #2218127a;display:flex;align-items:center;gap:10px;transition:all .4s cubic-bezier(.2,.7,.2,1)}
-        .toast-bar .ic{color:var(--terra-soft)}
-        .mobile-top{display:none}
+.mobile-top{display:none}
         @media(max-width:1100px){.acc{grid-template-columns:220px 1fr}.acc-main{padding:40px 32px}.stats-row{grid-template-columns:1fr 1fr}.pf-grid,.gift-grid,.pay-grid{grid-template-columns:1fr}.pf-field.full{grid-column:auto}.fav-grid{grid-template-columns:1fr 1fr}.row-2{grid-template-columns:1fr}}
         @media(max-width:720px){.acc{grid-template-columns:1fr}.acc-side{position:fixed;left:0;top:0;bottom:0;width:260px;transform:translateX(-100%);z-index:50;transition:transform .35s ease}.acc-side.open{transform:translateX(0)}.mobile-top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}.mobile-top .burger{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}.acc-main{padding:24px 20px 80px}.stats-row{grid-template-columns:1fr}.fav-grid{grid-template-columns:1fr}.next-card{padding:28px 24px}.next-card .countdown{position:static;margin-top:24px;justify-content:flex-start}.next-card h2{font-size:32px}.v-head h1{font-size:32px}.hist-item{grid-template-columns:1fr;gap:8px}.hist-action,.hist-price{text-align:left}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
@@ -497,7 +490,7 @@ export default function ComptePage() {
                         </div>
                       </div>
                       <div className="appt-actions">
-                        <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) showToast("Annulation envoyée") }}>Annuler</button>
+                        <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) toast.success("Annulation envoyée") }}>Annuler</button>
                       </div>
                     </div>
                   )
@@ -554,7 +547,7 @@ export default function ComptePage() {
                 ].map(s => (
                   <Link key={s.id} className="fav-card" href={`/soins/${s.id}`}>
                     <div className="fav-img" />
-                    <span className="heart" onClick={e => { e.preventDefault(); showToast("Retiré des favoris") }}>♥</span>
+                    <span className="heart" onClick={e => { e.preventDefault(); toast.success("Retiré des favoris") }}>♥</span>
                     <div className="body">
                       <div className="nm">{s.nm}</div>
                       <div className="row"><span>{s.dur} · ★ {s.stars}</span><span className="pr">{s.prix}</span></div>
@@ -624,7 +617,7 @@ export default function ComptePage() {
                   <p className="desc">Une intention, un mot, ce que vous voulez. Laurence le lit avant chaque séance.</p>
                   <textarea className="pref-text" placeholder="Ex : période chargée au travail, besoin de relâcher la nuque…" />
                 </div>
-                <button className="btn-save" onClick={() => showToast("Préférences enregistrées")}>Enregistrer mes préférences →</button>
+                <button className="btn-save" onClick={() => toast.success("Préférences enregistrées")}>Enregistrer mes préférences →</button>
               </div>
             </section>
           )}
@@ -638,7 +631,7 @@ export default function ComptePage() {
                 <p className="lede">Vos cartes sont enregistrées en toute sécurité via Stripe — La bulle de vie ne stocke aucune donnée bancaire.</p>
               </div>
               <div className="card" style={{ marginBottom: 24 }}>
-                <div className="card-head"><h3>Cartes enregistrées</h3><a href="#" onClick={e => { e.preventDefault(); showToast("Redirection vers Stripe…") }}>+ Ajouter une carte</a></div>
+                <div className="card-head"><h3>Cartes enregistrées</h3><a href="#" onClick={e => { e.preventDefault(); toast.success("Redirection vers Stripe…") }}>+ Ajouter une carte</a></div>
                 <div className="pay-grid">
                   <div className="pay-card default">
                     <div className="default-pill">Par défaut</div>
@@ -652,7 +645,7 @@ export default function ComptePage() {
                     <div className="actions"><a href="#">Définir par défaut</a><a href="#">Retirer</a></div>
                   </div>
                 </div>
-                <button className="pay-add" onClick={() => showToast("Redirection vers Stripe…")}>+ Ajouter une nouvelle carte</button>
+                <button className="pay-add" onClick={() => toast.success("Redirection vers Stripe…")}>+ Ajouter une nouvelle carte</button>
               </div>
               <div className="card">
                 <div className="card-head"><h3>Factures</h3><span className="sub">Téléchargeables au format PDF</span></div>
@@ -677,7 +670,7 @@ export default function ComptePage() {
                 <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 48, color: "var(--terra)", marginBottom: 14, lineHeight: 1 }}>♥</div>
                 <h3 style={{ fontSize: 28, fontFamily: "var(--serif)", marginBottom: 10 }}>Offrir une <span style={{ fontStyle: "italic", color: "var(--terra)" }}>bulle.</span></h3>
                 <p style={{ color: "var(--mute)", marginBottom: 24, maxWidth: 420, marginLeft: "auto", marginRight: "auto" }}>Un soin sur‑mesure, une parenthèse — la plus jolie attention à offrir. À partir de 35€.</p>
-                <button className="btn-save" onClick={() => showToast("Ouverture du flux cadeau…")}>Offrir une carte cadeau →</button>
+                <button className="btn-save" onClick={() => toast.success("Ouverture du flux cadeau…")}>Offrir une carte cadeau →</button>
               </div>
             </section>
           )}
@@ -708,18 +701,18 @@ export default function ComptePage() {
                   <div className="pf-field"><label>Date de naissance</label><input type="date" /></div>
                   <div className="pf-field full"><label>Adresse pour soins à domicile</label><input type="text" placeholder="22 rue de la République, Lyon 2ᵉ" /><div className="hint">Ne s&apos;applique que si vous choisissez &quot;à domicile&quot; lors de la réservation.</div></div>
                 </div>
-                <button className="btn-save" style={{ marginTop: 24 }} onClick={() => showToast("Profil mis à jour")}>Enregistrer les modifications →</button>
+                <button className="btn-save" style={{ marginTop: 24 }} onClick={() => toast.success("Profil mis à jour")}>Enregistrer les modifications →</button>
               </div>
 
               <div className="card" style={{ marginBottom: 24 }}>
                 <h3 style={{ marginBottom: 14 }}>Connexion &amp; sécurité</h3>
                 <div className="toggle-row">
                   <div className="info"><div className="ttl">Mot de passe</div><div className="desc">Modifiez votre mot de passe de connexion.</div></div>
-                  <button className="btn-rate" onClick={() => showToast("Lien de changement envoyé")}>Modifier</button>
+                  <button className="btn-rate" onClick={() => toast.success("Lien de changement envoyé")}>Modifier</button>
                 </div>
                 <div className="toggle-row">
                   <div className="info"><div className="ttl">Authentification à deux facteurs</div><div className="desc">Sécurise votre compte avec un code envoyé par SMS à chaque connexion.</div></div>
-                  <button className={`switch ${toggles["2fa"] ? "on" : "off"}`} onClick={() => { setToggles(t => ({ ...t, "2fa": !t["2fa"] })); showToast(toggles["2fa"] ? "Désactivé" : "Activé") }} />
+                  <button className={`switch ${toggles["2fa"] ? "on" : "off"}`} onClick={() => { setToggles(t => ({ ...t, "2fa": !t["2fa"] })); toast.success(toggles["2fa"] ? "Désactivé" : "Activé") }} />
                 </div>
                 <h4 style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--mute)", fontWeight: 500, margin: "24px 0 12px" }}>Comptes connectés</h4>
                 <div className="conn-row">
@@ -741,7 +734,7 @@ export default function ComptePage() {
                 ] as [keyof typeof toggles, string, string][]).map(([key, ttl, desc]) => (
                   <div key={key} className="toggle-row">
                     <div className="info"><div className="ttl">{ttl}</div><div className="desc">{desc}</div></div>
-                    <button className={`switch ${toggles[key] ? "on" : "off"}`} onClick={() => { setToggles(t => ({ ...t, [key]: !t[key] })); showToast(toggles[key] ? "Désactivé" : "Activé") }} />
+                    <button className={`switch ${toggles[key] ? "on" : "off"}`} onClick={() => { setToggles(t => ({ ...t, [key]: !t[key] })); toast.success(toggles[key] ? "Désactivé" : "Activé") }} />
                   </div>
                 ))}
               </div>
@@ -758,13 +751,6 @@ export default function ComptePage() {
         </main>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="toast-bar">
-          <span className="ic">✓</span>
-          <span>{toast}</span>
-        </div>
-      )}
     </>
   )
 }
