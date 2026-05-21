@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma"
 import { sendBookingConfirmation, sendSpecialistNotification } from "@/lib/resend/emails"
 import type Stripe from "stripe"
 
-export const config = { api: { bodyParser: false } }
-
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature")
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
