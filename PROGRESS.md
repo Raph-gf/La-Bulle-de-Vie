@@ -289,7 +289,14 @@
   - Lazy Resend client: logs warning + no-ops if `RESEND_API_KEY` not set (safe in dev)
 - ⬜ **Resend account + API key needed** — set `RESEND_API_KEY` in `.env.local` to activate
 - ⬜ 24h reminder email to client (needs a cron/scheduled job — Vercel Cron or Supabase Edge Function)
-- ⬜ Contact form (`/contact`) → send message to specialist via Resend
+- ✅ Contact form (`/contact`) — full page built from Figma + wired to Resend
+  - Split layout: dark gradient panel left, content right
+  - Info column: hours, phone, email, social links (Instagram, X, Facebook)
+  - Form: Name, Email, Phone (optional), Message — validated with contactSchema
+  - `POST /api/contact` → sendContactMessage → specialist email with reply-to set
+  - toast.success / toast.error feedback, form resets on success
+  - FAQ accordion section reused from home page
+  - contactSchema updated: `subject` → `phone` (optional)
 - ⬜ Newsletter form (home + footer) → store subscriber email in DB / send to mailing list
 - ⬜ Google Calendar — one-click "Add to my calendar" after booking confirmation
 - ⬜ Google Calendar — auto-add event to specialist's calendar on booking

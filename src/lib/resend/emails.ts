@@ -293,6 +293,72 @@ export async function sendSpecialistNotification(to: string, data: SpecialistNot
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
 }
 
+export async function sendContactMessage(to: string, data: {
+  senderName: string
+  senderEmail: string
+  senderPhone?: string
+  message: string
+}): Promise<void> {
+  const client = getResend()
+  if (!client) return
+
+  const phoneRow = data.senderPhone
+    ? `<tr><td style="padding:0 12px 0 0;width:50%;vertical-align:top;">
+        <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Téléphone</p>
+        <p style="margin:4px 0 0;font-size:15px;color:#2C1F14;">${data.senderPhone}</p>
+      </td></tr>`
+    : ""
+
+  const html = emailWrapper(`
+  <tr>
+    <td style="background:#2C1F14;padding:40px 48px 36px;border-radius:12px 12px 0 0;">
+      <p style="margin:0;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#C4956A;">La Bulle de Vie</p>
+      <h1 style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:normal;color:#F5EDE5;">
+        Nouveau message de contact
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#FDFAF7;padding:48px;">
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="background:#F5EDE5;border:1px solid #E2D5CB;border-radius:10px;margin-bottom:28px;">
+        <tr>
+          <td style="padding:28px 32px;">
+            <p style="margin:0 0 18px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Expéditeur</p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                ${labelCell("Nom", data.senderName)}
+                ${labelCell("Email", `<a href="mailto:${data.senderEmail}" style="color:#2C1F14;">${data.senderEmail}</a>`)}
+              </tr>
+              ${phoneRow}
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="background:#F5EDE5;border:1px solid #E2D5CB;border-radius:10px;">
+        <tr>
+          <td style="padding:28px 32px;">
+            <p style="margin:0 0 16px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Message</p>
+            <p style="margin:0;font-size:15px;color:#2C1F14;line-height:1.8;white-space:pre-wrap;">${data.message}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`)
+
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    replyTo: data.senderEmail,
+    subject: `Message de ${data.senderName}`,
+    html,
+  })
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
+}
+
 export async function sendAppointmentReminder(to: string, data: BookingEmailData): Promise<void> {
   const client = getResend()
   if (!client) return

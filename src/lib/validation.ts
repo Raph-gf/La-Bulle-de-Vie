@@ -89,7 +89,7 @@ export const reviewSchema = z.object({
 export const contactSchema = z.object({
   name: nameSchema,
   email: emailSchema,
-  subject: text(150, 1),
+  phone: phoneSchema,
   message: text(2000, 10),
 })
 
