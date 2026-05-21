@@ -359,6 +359,51 @@ export async function sendContactMessage(to: string, data: {
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
 }
 
+export async function sendNewsletterWelcome(to: string, data: {
+  unsubscribeToken: string
+}): Promise<void> {
+  const client = getResend()
+  if (!client) return
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+  const unsubUrl = `${appUrl}/api/newsletter/unsubscribe?token=${data.unsubscribeToken}`
+
+  const html = emailWrapper(`
+  <tr>
+    <td style="background:#2C1F14;padding:44px 48px 40px;border-radius:12px 12px 0 0;text-align:center;">
+      <p style="margin:0;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#C4956A;">La Bulle de Vie</p>
+      <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:normal;color:#F5EDE5;">
+        Bienvenue dans la bulle
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#FDFAF7;padding:48px;text-align:center;">
+      <p style="margin:0 0 20px;font-size:16px;color:#1C1C1C;line-height:1.7;">
+        Merci de rejoindre notre liste. Vous recevrez en avant-première nos nouveaux soins, offres exclusives et inspirations bien-être.
+      </p>
+      <p style="margin:0 0 36px;font-size:15px;color:#6B5C4E;line-height:1.7;">
+        D'ici là, prenez soin de vous.
+      </p>
+      <p style="margin:0;font-size:15px;color:#1C1C1C;line-height:1.7;">
+        <em style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2C1F14;">L'équipe La Bulle de Vie</em>
+      </p>
+      <p style="margin:40px 0 0;font-size:11px;color:#B8A898;">
+        <a href="${unsubUrl}" style="color:#B8A898;">Se désinscrire</a>
+      </p>
+    </td>
+  </tr>`)
+
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: "Bienvenue dans la bulle ✦",
+    html,
+  })
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
+}
+
 export async function sendAppointmentReminder(to: string, data: BookingEmailData): Promise<void> {
   const client = getResend()
   if (!client) return

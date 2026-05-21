@@ -320,3 +320,14 @@ model GiftCard {
 
   @@map("gift_cards")
 }
+
+/// Newsletter subscribers — email-only opt-in list
+model NewsletterSubscriber {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  subscribedAt     DateTime @default(now())
+  /// Random token used in unsubscribe links — never expose to frontend
+  unsubscribeToken String   @unique @default(uuid())
+
+  @@map("newsletter_subscribers")
+}

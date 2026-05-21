@@ -1,9 +1,31 @@
 "use client"
 import Link from "next/link"
 import { useState } from "react"
+import { toast } from "sonner"
 
 export default function Footer() {
+  const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error()
+      setSubmitted(true)
+      toast.success("Inscription confirmée — à très vite dans la bulle !")
+    } catch {
+      toast.error("Une erreur est survenue. Veuillez réessayer.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <footer>
@@ -32,9 +54,18 @@ export default function Footer() {
             {submitted ? (
               <div className="ok">✓ Merci, à très vite dans la bulle.</div>
             ) : (
-              <form onSubmit={e => { e.preventDefault(); setSubmitted(true) }}>
-                <input type="email" placeholder="Votre adresse mail" required />
-                <button type="submit">Je m&apos;inscris</button>
+              <form onSubmit={handleSubmit}>
+                <input
+                  type="email"
+                  placeholder="Votre adresse mail"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+                <button type="submit" disabled={loading}>
+                  {loading ? "…" : "Je m’inscris"}
+                </button>
               </form>
             )}
           </div>

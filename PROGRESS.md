@@ -297,7 +297,12 @@
   - toast.success / toast.error feedback, form resets on success
   - FAQ accordion section reused from home page
   - contactSchema updated: `subject` → `phone` (optional)
-- ⬜ Newsletter form (home + footer) → store subscriber email in DB / send to mailing list
+- ✅ Newsletter form (footer) → wired to `POST /api/newsletter`
+  - `newsletter_subscribers` table added to Prisma schema + pushed to Supabase
+  - Upsert on subscribe (re-subscribing is silent, no duplicate email)
+  - Welcome email via Resend (`sendNewsletterWelcome`) with unsubscribe link
+  - `GET /api/newsletter/unsubscribe?token=xxx` → deletes row, shows branded confirmation page
+  - Footer form: real API call, toast.success/error, loading state, success message
 - ⬜ Google Calendar — one-click "Add to my calendar" after booking confirmation
 - ⬜ Google Calendar — auto-add event to specialist's calendar on booking
 
