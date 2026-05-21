@@ -278,9 +278,17 @@
 ## Phase 5 — Notifications
 
 - ⬜ Resend SMTP configured in Supabase (replaces default email for auth flows)
-- ⬜ Booking confirmation email to client (service, date, time, location, cancellation link)
-- ⬜ Instant notification to specialist on new booking (client name, date, time, service, notes)
-- ⬜ 24h reminder email to client
+- ✅ Booking confirmation email to client — fires on `payment_intent.succeeded` in Stripe webhook
+  - Branded HTML: dark mocha header, cream body, booking summary card, tip block, ref number
+  - Non-blocking: email failure never fails the webhook response
+- ✅ Instant notification to specialist on new booking — same webhook trigger
+  - Contains: client name/email/phone, service, date, time, location, notes, first-visit badge, amount
+  - Recipient: `SPECIALIST_EMAIL` env var (set to raphaelgarnier1997@gmail.com)
+  - Sender: `onboarding@resend.dev` (works without domain verification — swap to labulldevie.fr later)
+- ✅ `src/lib/resend/emails.ts` — 3 typed functions: `sendBookingConfirmation`, `sendSpecialistNotification`, `sendAppointmentReminder`
+  - Lazy Resend client: logs warning + no-ops if `RESEND_API_KEY` not set (safe in dev)
+- ⬜ **Resend account + API key needed** — set `RESEND_API_KEY` in `.env.local` to activate
+- ⬜ 24h reminder email to client (needs a cron/scheduled job — Vercel Cron or Supabase Edge Function)
 - ⬜ Contact form (`/contact`) → send message to specialist via Resend
 - ⬜ Newsletter form (home + footer) → store subscriber email in DB / send to mailing list
 - ⬜ Google Calendar — one-click "Add to my calendar" after booking confirmation
@@ -414,8 +422,8 @@
 
 ## Current phase: Phase 5 — Notifications
 ## Last session: 2026-05-21
-## Next step: Email notifications via Resend (booking confirmation to client + instant alert to specialist)
-## Also done this session: Sonner toast system, cal-btn CSS collision fix, confirmation page calendar buttons
+## Next step: Set RESEND_API_KEY → test emails, then 24h reminder cron + contact form email
+## Also done this session: Booking confirmation email + specialist notification wired into Stripe webhook
 
 ---
 

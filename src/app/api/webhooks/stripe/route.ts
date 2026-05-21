@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
+import { sendBookingConfirmation, sendSpecialistNotification } from "@/lib/resend/emails"
 import type Stripe from "stripe"
 
 export const config = { api: { bodyParser: false } }
@@ -93,6 +94,43 @@ export async function POST(req: NextRequest) {
           await stripe.paymentIntents.update(pi.id, {
             metadata: { ...pi.metadata, appointmentId: appointment.id },
           })
+
+          // Fire confirmation emails (non-blocking — email failure must never fail the webhook)
+          const [service, slot] = await Promise.all([
+            prisma.service.findUnique({ where: { id: serviceId }, select: { name: true } }),
+            prisma.availabilitySlot.findUnique({ where: { id: slotId }, select: { date: true, startTime: true } }),
+          ])
+
+          if (service && slot) {
+            const ref = `BDV-${pi.id.slice(-6).toUpperCase()}`
+            const date = new Intl.DateTimeFormat("fr-FR", {
+              weekday: "long", day: "numeric", month: "long", year: "numeric",
+              timeZone: "Europe/Paris",
+            }).format(slot.date)
+            const amountEur = (pi.amount_received / 100).toLocaleString("fr-FR", {
+              minimumFractionDigits: 2, maximumFractionDigits: 2,
+            })
+
+            const baseData = {
+              clientName, serviceName: service.name, date, time: slot.startTime,
+              location: location ?? "cabinet", clientAddress: clientAddress || undefined,
+              amountEur, ref,
+            }
+
+            sendBookingConfirmation(clientEmail, baseData)
+              .catch(err => console.error("[email] confirmation failed:", err))
+
+            const specialistEmail = process.env.SPECIALIST_EMAIL
+            if (specialistEmail) {
+              sendSpecialistNotification(specialistEmail, {
+                ...baseData,
+                clientEmail,
+                clientPhone: clientPhone || undefined,
+                notes: notes || undefined,
+                isFirstVisit: isFirstVisit === "true",
+              }).catch(err => console.error("[email] specialist notification failed:", err))
+            }
+          }
         } catch (txErr) {
           if (txErr instanceof Error && txErr.message === "SLOT_TAKEN") {
             // Race condition: slot was taken by another booking — refund automatically
