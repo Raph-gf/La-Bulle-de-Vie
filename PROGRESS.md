@@ -288,7 +288,7 @@
 - ✅ `src/lib/resend/emails.ts` — 3 typed functions: `sendBookingConfirmation`, `sendSpecialistNotification`, `sendAppointmentReminder`
   - Lazy Resend client: logs warning + no-ops if `RESEND_API_KEY` not set (safe in dev)
 - ⬜ **Resend account + API key needed** — set `RESEND_API_KEY` in `.env.local` to activate
-- ⬜ 24h reminder email to client (needs a cron/scheduled job — Vercel Cron or Supabase Edge Function)
+- ⬜ **24h reminder cron** — `GET /api/cron/reminders` secured with `CRON_SECRET`, runs daily at 08:00 via Vercel Cron (`vercel.json`), queries confirmed appointments where `slot.date = tomorrow`, checks `prefs.clientReminder24h`, calls `sendAppointmentReminder` per client. Add `CRON_SECRET` to env + Vercel dashboard.
 - ✅ Contact form (`/contact`) — full page built from Figma + wired to Resend
   - Split layout: dark gradient panel left, content right
   - Info column: hours, phone, email, social links (Instagram, X, Facebook)

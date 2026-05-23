@@ -404,6 +404,59 @@ export async function sendNewsletterWelcome(to: string, data: {
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
 }
 
+export async function sendNewReviewNotification(to: string, data: {
+  clientName: string
+  serviceName: string
+  stars: number
+  body: string
+}): Promise<void> {
+  const client = getResend()
+  if (!client) return
+
+  const stars = "★".repeat(data.stars) + "☆".repeat(5 - data.stars)
+
+  const html = emailWrapper(`
+  <tr>
+    <td style="background:#2C1F14;padding:40px 48px 36px;border-radius:12px 12px 0 0;">
+      <p style="margin:0;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#C4956A;">La Bulle de Vie</p>
+      <h1 style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:normal;color:#F5EDE5;">
+        Nouvel avis reçu
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#FDFAF7;padding:48px;">
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="background:#F5EDE5;border:1px solid #E2D5CB;border-radius:10px;margin-bottom:28px;">
+        <tr>
+          <td style="padding:28px 32px;">
+            <p style="margin:0 0 4px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Client</p>
+            <p style="margin:0 0 18px;font-size:16px;color:#2C1F14;font-weight:500;">${data.clientName}</p>
+            <p style="margin:0 0 4px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Prestation</p>
+            <p style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#2C1F14;">${data.serviceName}</p>
+            <p style="margin:0 0 4px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Note</p>
+            <p style="margin:0 0 18px;font-size:20px;color:#C4956A;letter-spacing:3px;">${stars}</p>
+            <p style="margin:0 0 4px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Commentaire</p>
+            <p style="margin:0;font-size:15px;color:#2C1F14;line-height:1.7;font-style:italic;">"${data.body}"</p>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0;font-size:14px;color:#6B5C4E;line-height:1.7;text-align:center;">
+        Rendez-vous dans votre tableau de bord pour approuver ou masquer cet avis.
+      </p>
+    </td>
+  </tr>`)
+
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: `Nouvel avis — ${data.clientName} · ${data.stars}/5 étoiles`,
+    html,
+  })
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
+}
+
 export async function sendAppointmentReminder(to: string, data: BookingEmailData): Promise<void> {
   const client = getResend()
   if (!client) return

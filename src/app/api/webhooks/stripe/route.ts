@@ -120,13 +120,23 @@ export async function POST(req: NextRequest) {
 
             const specialistEmail = process.env.SPECIALIST_EMAIL
             if (specialistEmail) {
-              sendSpecialistNotification(specialistEmail, {
-                ...baseData,
-                clientEmail,
-                clientPhone: clientPhone || undefined,
-                notes: notes || undefined,
-                isFirstVisit: isFirstVisit === "true",
-              }).catch(err => console.error("[email] specialist notification failed:", err))
+              // Respect the specialist's onNewBooking notification preference
+              const specialist = await prisma.profile.findFirst({
+                where: { role: "specialist" },
+                select: { notificationPrefs: true },
+              })
+              const notifPrefs = (specialist?.notificationPrefs as Record<string, boolean> | null) ?? {}
+              const wantsAlert = notifPrefs.onNewBooking !== false // default true if never set
+
+              if (wantsAlert) {
+                sendSpecialistNotification(specialistEmail, {
+                  ...baseData,
+                  clientEmail,
+                  clientPhone: clientPhone || undefined,
+                  notes: notes || undefined,
+                  isFirstVisit: isFirstVisit === "true",
+                }).catch(err => console.error("[email] specialist notification failed:", err))
+              }
             }
           }
         } catch (txErr) {
