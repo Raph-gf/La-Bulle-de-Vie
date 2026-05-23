@@ -22,7 +22,7 @@ type HistAppt = {
   id: string
   status: string
   amountPaid: number
-  review: { id: string; stars: number } | null
+  review: { id: string; stars: number; approved: boolean } | null
   service: { name: string; durationMinutes: number }
   slot: { date: string; startTime: string }
 }
@@ -782,12 +782,37 @@ export default function ComptePage() {
                             </div>
                             <div className="hist-price">{appt.amountPaid ? `${(appt.amountPaid / 100).toFixed(0)}€` : "—"}</div>
                             <div className="hist-action">
-                              {appt.review
-                                ? <div className="stars-given">{"★".repeat(appt.review.stars)}{"☆".repeat(5 - appt.review.stars)}</div>
-                                : canReview
-                                  ? <button className="btn-rate" onClick={() => { setReviewModal({ appointmentId: appt.id, serviceName: appt.service.name }); setReviewStars(0); setReviewBody("") }}>Laisser un avis →</button>
-                                  : null
-                              }
+                              {appt.review ? (
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                                  <div className="stars-given">{"★".repeat(appt.review.stars)}{"☆".repeat(5 - appt.review.stars)}</div>
+                                  {appt.review.approved ? (
+                                    <span style={{
+                                      display: "inline-flex", alignItems: "center", gap: 5,
+                                      fontSize: 11, fontWeight: 600, letterSpacing: ".06em",
+                                      padding: "3px 9px", borderRadius: 999,
+                                      background: "#EAF1E8", color: "#3D6346",
+                                    }}>
+                                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                                        <path d="M2 6l3 3 5-5" stroke="#5C8262" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                      Avis approuvé
+                                    </span>
+                                  ) : (
+                                    <span style={{
+                                      display: "inline-flex", alignItems: "center", gap: 5,
+                                      fontSize: 11, letterSpacing: ".06em",
+                                      padding: "3px 9px", borderRadius: 999,
+                                      background: "#F9F1E5", color: "#7A5C2A",
+                                    }}>
+                                      En attente de validation
+                                    </span>
+                                  )}
+                                </div>
+                              ) : canReview ? (
+                                <button className="btn-rate" onClick={() => { setReviewModal({ appointmentId: appt.id, serviceName: appt.service.name }); setReviewStars(0); setReviewBody("") }}>
+                                  Laisser un avis →
+                                </button>
+                              ) : null}
                             </div>
                           </div>
                         )
