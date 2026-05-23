@@ -258,7 +258,7 @@ model Order {
   status                OrderStatus @default(pending)
   /// Total in euro cents
   total                 Int
-  stripePaymentIntentId String?
+  stripePaymentIntentId String?     @unique
   shippingAddress       Json?
   /// Discount applied — FK to discount_codes if a promo code was used
   discountCodeId        String?

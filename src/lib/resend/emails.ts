@@ -457,6 +457,91 @@ export async function sendNewReviewNotification(to: string, data: {
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
 }
 
+export async function sendOrderConfirmation(to: string, data: {
+  clientName: string
+  ref: string
+  amountEur: string
+  items: { name: string; qty: number; unitPrice: number }[]
+  shippingAddress?: Record<string, string> | null
+}): Promise<void> {
+  const client = getResend()
+  if (!client) return
+
+  const itemRows = data.items.map(i => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #E2D5CB;font-size:14px;color:#2C1F14;">${i.name}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #E2D5CB;font-size:14px;color:#2C1F14;text-align:center;">×${i.qty}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #E2D5CB;font-size:14px;color:#2C1F14;text-align:right;">
+        ${((i.unitPrice * i.qty) / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+      </td>
+    </tr>`).join("")
+
+  const addr = data.shippingAddress
+  const addrBlock = addr
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F5EDE5;border:1px solid #E2D5CB;border-radius:10px;margin-bottom:28px;">
+        <tr><td style="padding:24px 32px;">
+          <p style="margin:0 0 10px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Adresse de livraison</p>
+          <p style="margin:0;font-size:14px;color:#2C1F14;line-height:1.7;">
+            ${addr.name ? addr.name + "<br>" : ""}
+            ${addr.address ? addr.address + "<br>" : ""}
+            ${addr.postalCode ? addr.postalCode + " " : ""}${addr.city ? addr.city : ""}
+          </p>
+        </td></tr>
+      </table>`
+    : ""
+
+  const html = emailWrapper(`
+  <tr>
+    <td style="background:#2C1F14;padding:44px 48px 40px;border-radius:12px 12px 0 0;text-align:center;">
+      <p style="margin:0;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#C4956A;">La Bulle de Vie</p>
+      <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:normal;color:#F5EDE5;">
+        Votre commande est confirmée
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#FDFAF7;padding:48px;">
+      <p style="margin:0 0 8px;font-size:16px;color:#1C1C1C;">Bonjour <strong>${data.clientName}</strong>,</p>
+      <p style="margin:0 0 36px;font-size:15px;color:#6B5C4E;line-height:1.7;">
+        Merci pour votre achat ! Votre commande a bien été enregistrée et sera préparée avec soin.
+      </p>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5EDE5;border:1px solid #E2D5CB;border-radius:10px;margin-bottom:28px;">
+        <tr><td style="padding:28px 32px;">
+          <p style="margin:0 0 18px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Récapitulatif</p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            ${itemRows}
+            <tr>
+              <td colspan="2" style="padding:14px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Total réglé</td>
+              <td style="padding:14px 0 0;text-align:right;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#2C1F14;">${data.amountEur} €</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+
+      ${addrBlock}
+
+      <p style="margin:0 0 32px;font-size:13px;color:#9A8070;text-align:center;">
+        Référence : <strong style="color:#2C1F14;letter-spacing:1px;">${data.ref}</strong>
+      </p>
+
+      <p style="margin:0;font-size:15px;color:#1C1C1C;line-height:1.7;">
+        À très bientôt,<br>
+        <em style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2C1F14;">L'équipe La Bulle de Vie</em>
+      </p>
+    </td>
+  </tr>`)
+
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: `Commande confirmée — réf. ${data.ref}`,
+    html,
+  })
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
+}
+
 export async function sendAppointmentReminder(to: string, data: BookingEmailData): Promise<void> {
   const client = getResend()
   if (!client) return

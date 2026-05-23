@@ -493,16 +493,40 @@
 
 ---
 
-## Phase 7 — E-commerce
+## Phase 7 — E-commerce ✅ Complete (2026-05-24)
 
-- ✅ Décorations catalog page (static data, UI complete)
-- ⬜ Wire catalog to real Prisma products from DB
-- ⬜ "Ajouter au panier" → real cart state (Zustand or React context)
-- ⬜ Cart drawer + `/panier` page showing items, quantities, total
-- ⬜ Stripe checkout for cart (PaymentIntent or Checkout Session)
-- ⬜ Order confirmation page + confirmation email via Resend
+- ✅ Décorations catalog page wired to real Prisma products via `GET /api/products`
+  - `where: { isPublished: true, stock: { gt: 0 } }` — only shows in-stock published items
+  - Loading/empty states, image fallback palette, price formatted in EUR
+- ✅ **Zustand cart store** (`src/lib/stores/useCartStore.ts`) — persisted to `localStorage` via `persist` middleware
+  - `add`, `remove`, `updateQty` (0 = delete), `clear`, `open/close`, `total()`, `count()`
+  - Stock-aware: `updateQty` caps at `stock`; `add` opens drawer automatically
+  - `CartItem`: id, name, price (cents), imageUrl, medium, dimensions, quantity, stock
+- ✅ **"Ajouter au panier"** button on catalog — flash "Ajouté ✓" (1800ms), stock check, toast feedback
+- ✅ **Cart drawer** (`src/components/CartDrawer.tsx`) — slides in from right (400px, full-height)
+  - Backdrop with blur, qty controls (+/−), individual item remove, subtotal, "Commander" CTA
+  - Empty state with ghost icon + "Voir les œuvres" button
+  - Available on all public pages (added to `(public)/layout.tsx`)
+- ✅ **Navbar cart icon** — basket SVG with live count badge (terracotta circle), clicks open drawer
+- ✅ **`/panier` page** — 3-step flow (cart → shipping address → Stripe payment)
+  - Step 1: item list with qty controls + remove, sidebar order summary with trust badges
+  - Step 2: shipping form (name, email, address, postal code, city) → calls `POST /api/orders`
+  - Step 3: `PaymentElement` (same Stripe appearance as booking wizard) + pay button
+  - After `confirmPayment` success: calls `POST /api/orders/confirm` → redirects to confirmation page
+- ✅ **`POST /api/orders`** — creates Stripe PaymentIntent
+  - Prices read from DB (never trusts client values)
+  - Validates stock per item, returns 422 with friendly message if stock issue
+  - Embeds items + clientId in PI metadata for later verification
+  - Supports both authenticated and guest checkout
+- ✅ **`POST /api/orders/confirm`** — verifies PI server-side, creates Order + OrderItems
+  - Atomic transaction: decrement stock → create `Order` + `OrderItem` rows
+  - `status: "paid"`, stores `amountPaid`, `shippingAddress`, `stripePaymentIntentId`
+  - `@unique` on `Order.stripePaymentIntentId` — idempotent if webhook arrives first
+  - Sends order confirmation email (non-blocking)
+- ✅ **Order confirmation email** (`sendOrderConfirmation`) — branded HTML, item table, shipping address block, ref number
+- ✅ **Order confirmation page** (`/confirmation/commande/[orderId]`) — success screen with checkmark, ref pill, items summary, amount paid, CTAs
 - ⬜ Client order history wired in `/compte#history`
-- ⬜ Specialist marks order as shipped in dashboard boutique
+- ⬜ Specialist marks order as shipped in dashboard boutique (dropdown already exists in boutique page)
 
 ---
 

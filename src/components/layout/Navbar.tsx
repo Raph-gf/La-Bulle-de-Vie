@@ -3,6 +3,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useCartStore } from "@/lib/stores/useCartStore"
 
 const links = [
   { href: "/prestations", label: "Massages" },
@@ -16,6 +17,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const [userInitial, setUserInitial] = useState<string | null>(null)
+  const { count, open: openCart } = useCartStore()
+  const cartCount = count()
 
   // Pages whose hero is dark — nav links should be white when unscrolled
   const darkHero =
@@ -82,6 +85,13 @@ export default function Navbar() {
               Se connecter
             </Link>
           )}
+          <button className="cart-nav-btn" onClick={() => { setOpen(false); openCart() }} aria-label="Panier">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+          </button>
           <Link className="btn primary" href="/booking" onClick={() => setOpen(false)}>
             Réserver <span className="arrow">→</span>
           </Link>
