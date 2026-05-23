@@ -11,6 +11,8 @@ import { sendBookingConfirmation, sendSpecialistNotification } from "@/lib/resen
 export async function POST(req: NextRequest) {
   try {
     const { paymentIntentId } = await req.json()
+    console.log("[booking/confirm] received paymentIntentId:", paymentIntentId)
+
     if (!paymentIntentId || typeof paymentIntentId !== "string") {
       return NextResponse.json({ error: "paymentIntentId requis" }, { status: 400 })
     }
@@ -19,11 +21,14 @@ export async function POST(req: NextRequest) {
     let pi
     try {
       pi = await stripe.paymentIntents.retrieve(paymentIntentId)
-    } catch {
+      console.log("[booking/confirm] PI status:", pi.status, "amount_received:", pi.amount_received)
+    } catch (err) {
+      console.error("[booking/confirm] Stripe retrieve failed:", err)
       return NextResponse.json({ error: "PaymentIntent introuvable" }, { status: 404 })
     }
 
     if (pi.status !== "succeeded") {
+      console.warn("[booking/confirm] PI not succeeded, status:", pi.status)
       return NextResponse.json({ error: "Paiement non finalisé" }, { status: 402 })
     }
 
@@ -41,7 +46,10 @@ export async function POST(req: NextRequest) {
       location, clientAddress, notes, isFirstVisit, travelFeeInCents, discountAmount,
     } = pi.metadata
 
+    console.log("[booking/confirm] metadata:", { slotId, serviceId, clientEmail, clientName, location })
+
     if (!slotId || !serviceId) {
+      console.error("[booking/confirm] missing metadata — slotId:", slotId, "serviceId:", serviceId)
       return NextResponse.json({ error: "Métadonnées PaymentIntent manquantes" }, { status: 422 })
     }
 
@@ -76,17 +84,17 @@ export async function POST(req: NextRequest) {
         })
       })
     } catch (err) {
+      console.error("[booking/confirm] transaction error:", err)
       if (err instanceof Error && err.message === "SLOT_TAKEN") {
-        // Race: another confirm or webhook already took the slot
         await stripe.refunds.create({ payment_intent: pi.id, reason: "duplicate" })
         return NextResponse.json({ error: "Ce créneau n'est plus disponible. Votre paiement sera remboursé." }, { status: 409 })
       }
-      // Unique constraint on stripePaymentIntentId — webhook beat us, safe to ignore
       if ((err as { code?: string }).code === "P2002") {
         return NextResponse.json({ ok: true, alreadyCreated: true })
       }
       throw err
     }
+    console.log("[booking/confirm] appointment created:", appointment.id)
 
     // Store appointmentId in PI metadata for future reference
     await stripe.paymentIntents.update(pi.id, {
