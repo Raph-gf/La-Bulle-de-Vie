@@ -115,7 +115,7 @@ export default function SoinPage() {
         return r.json()
       })
       .then(json => { if (json) setData(json) })
-      .catch(() => setNotFound(true))
+      .catch(err => { console.error("[soins] fetch error:", err); setNotFound(true) })
       .finally(() => setLoading(false))
   }, [id])
 
