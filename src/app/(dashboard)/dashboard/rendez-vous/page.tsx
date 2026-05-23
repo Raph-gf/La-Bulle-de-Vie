@@ -1,7 +1,8 @@
 "use client"
 import { useState, Fragment } from "react"
 import Link from "next/link"
-import { useWeekAppointments, useAppointments, type Appt } from "@/lib/queries/appointments"
+import { useWeekAppointments, useAppointments, useConfirmAppointment, type Appt } from "@/lib/queries/appointments"
+import { toast } from "sonner"
 
 // ── Constants ───────────────────────────────────────────────────────
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
@@ -292,6 +293,18 @@ export default function RendezVousPage() {
 // ── Detail panel ────────────────────────────────────────────────────
 function DetailPanel({ appt, onClose }: { appt: Appt; onClose: () => void }) {
   const name = appt.client?.fullName ?? appt.guestName ?? "Invité"
+  const confirm = useConfirmAppointment()
+
+  async function handleConfirm() {
+    try {
+      await confirm.mutateAsync(appt.id)
+      toast.success("Rendez-vous confirmé.")
+      onClose()
+    } catch {
+      toast.error("Impossible de confirmer ce rendez-vous.")
+    }
+  }
+
   return (
     <>
       <div className="av-lg">{name.charAt(0).toUpperCase()}</div>
@@ -315,7 +328,28 @@ function DetailPanel({ appt, onClose }: { appt: Appt; onClose: () => void }) {
         </div>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-        <button className="tbtn" style={{ flex: 1 }}>Confirmer</button>
+        {appt.status === "pending" && (
+          <button
+            className="tbtn"
+            style={{ flex: 1 }}
+            onClick={handleConfirm}
+            disabled={confirm.isPending}
+          >
+            {confirm.isPending ? "Confirmation…" : "Confirmer"}
+          </button>
+        )}
+        {appt.status === "confirmed" && (
+          <div style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 6, padding: "10px 16px", borderRadius: 8,
+            background: "#EAF1E8", color: "#3D6346", fontSize: 13, fontWeight: 500,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#5C8262" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Confirmé
+          </div>
+        )}
         <button className="tbtn ghost" onClick={onClose}>Fermer</button>
       </div>
     </>
