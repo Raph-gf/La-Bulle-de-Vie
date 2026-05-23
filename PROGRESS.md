@@ -458,6 +458,41 @@
 
 ---
 
+## Bug fixes & UX improvements (2026-05-23)
+
+### Booking flow — appointment creation & emails
+- ✅ **Root cause fixed**: appointment was only created by Stripe webhook, which never fires in local dev (localhost unreachable by Stripe). Emails and DB row were silently dropped.
+- ✅ **`POST /api/booking/confirm`** — new client-side confirm route called immediately after `stripe.confirmPayment()` succeeds
+  - Verifies PaymentIntent server-side with Stripe (can't be tampered by client)
+  - Atomic transaction: slot free check → mark booked → create appointment
+  - Sends client confirmation email + specialist notification email
+  - Creates Google Calendar event if specialist has connected their account
+  - Handles P2002 (unique constraint on `stripePaymentIntentId`) — webhook beat us, exits cleanly
+  - Handles SLOT_TAKEN race → auto-refund via Stripe
+- ✅ **`@unique` on `Appointment.stripePaymentIntentId`** — prevents double-creation when both client confirm and webhook fire
+- ✅ **`confirmBooking` now awaited** in BookingWizard before `onSuccess()` — prevents browser cancelling the fetch on navigation; shows visible toast if server returns an error with ref code
+- ✅ **Stripe webhook** stays as idempotent production backup (unchanged)
+- ✅ **Google Calendar on booking**: `/api/booking/confirm` now also fetches specialist profile + fires `createCalendarEvent` — previously only triggered by manual dashboard "Confirmer" click
+
+### Confirmation page — guest vs logged-in UX
+- ✅ Client-side Supabase auth check on mount (`isLoggedIn` state)
+  - **Guest**: primary CTA → "Créer mon compte →" (links to `/login?mode=register&email=...`)
+  - **Logged-in**: primary CTA → "Voir mon espace →", bottom section → "Mes rendez-vous →"
+  - Bottom account section hidden for logged-in users, shown only for guests
+- ✅ Login page reads `?email=` URL param — pre-fills both register and login form fields so guest arriving from confirmation lands with email already filled
+
+### Google Login (Supabase OAuth)
+- ✅ Diagnosed: Supabase Google Auth requires its own redirect URI in Google Cloud Console (`https://[project-ref].supabase.co/auth/v1/callback`) — separate from the Calendar OAuth redirect
+- ✅ Test user added to Google OAuth consent screen to unblock `access_denied` 403 error
+
+### Resend email — dev limitation documented
+- `onboarding@resend.dev` sender can only deliver to the Resend account owner's email in dev (no verified domain)
+- Specialist email works (raphaelgarnier1997@gmail.com = account owner)
+- Client email to temp/other addresses won't deliver until a domain is verified on Resend
+- **Workaround for dev testing**: use raphaelgarnier1997@gmail.com as the client email when booking
+
+---
+
 ## Phase 7 — E-commerce
 
 - ✅ Décorations catalog page (static data, UI complete)
@@ -516,7 +551,7 @@
 
 ## Current phase: Phase 7 — E-commerce
 ## Last session: 2026-05-23
-## Phase 6 complete ✅ — All dashboard pages built and wired. Google Calendar OAuth integrated.
+## Phase 6 complete ✅ — All dashboard pages built. Google Calendar OAuth integrated. Booking flow fully wired (emails + calendar on payment).
 ## Next step: Wire /decorations catalog to real Prisma products → Zustand cart → /panier page → Stripe checkout for cart → order confirmation email
 
 ---
