@@ -18,6 +18,7 @@ const NAV = [
     section: "Catalogue",
     items: [
       { href: "/dashboard/disponibilites", label: "Disponibilités", icon: <SparkIcon /> },
+      { href: "/dashboard/prestations", label: "Prestations", icon: <ListIcon /> },
       { href: "/dashboard/boutique", label: "Boutique", icon: <ShopIcon /> },
     ],
   },
@@ -111,6 +112,9 @@ function StarIcon() {
 }
 function SparkIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l3-7 3 7 7 3-7 3-3 7-3-7-7-3z"/></svg>
+}
+function ListIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="3" y="13" width="7" height="7" rx="1"/><path d="M14 6h7M14 10h5M14 15h7M14 19h5"/></svg>
 }
 function ShopIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16l-1.5 12.5a2 2 0 0 1-2 1.5h-9a2 2 0 0 1-2-1.5z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>

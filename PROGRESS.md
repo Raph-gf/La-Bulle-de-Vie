@@ -91,7 +91,7 @@
 - ✅ TypeScript types: `src/types/database.ts` exports all Prisma row types + composite types
 
 ### Still to do (deferred to later phases)
-- ⬜ Replace static `SOINS` data with Prisma query on `/prestations` and `/soins/[id]`
+- ✅ Replace static `SOINS` data with Prisma query on `/prestations` and `/soins/[id]`
 - ⬜ Replace static product data on `/decorations` with Prisma query
 
 ---
@@ -367,8 +367,25 @@
 ### Still to build
 - ⬜ Clients page — searchable/filterable table + sticky detail panel (history, private notes)
 - ⬜ Finances page — KPI tiles + 12-month bar chart + transactions table + Stripe payouts
-- ⬜ Avis page — moderation (approve/hide/reply), linked to public soin review sections
-- ⬜ Prestations page — CRUD for soins (currently static data in `src/lib/soins.ts`)
+- ✅ **Avis page** (`/dashboard/avis`) — full moderation UI (2026-05-21)
+  - KPI bar: avg rating (featured tile with stars), total, pending count (amber), approved count (green)
+  - Tab bar: En attente / Approuvés / Tous — with live counts, filters review list
+  - `ReviewCard` — avatar initial, stars, service name, relative date, body quote, approve/hide/reply actions
+  - Inline reply textarea — expands on "Répondre", shows existing reply block, "Modifier la réponse" if already replied
+  - 4 API routes: `GET /api/dashboard/reviews`, POST approve/hide/reply per review ID
+  - TanStack Query hooks in `src/lib/queries/reviews.ts` — auto-invalidate on all mutations
+  - Sonner toasts on approve, hide, reply success
+  - Empty states per tab with contextual copy
+- ✅ **Prestations page** (`/dashboard/prestations`) — full CRUD UI (2026-05-23)
+  - Schema migration: 10 new rich content fields on `Service` model (tagline, forWho, shortDescription, longDescription, ritualCore, ritualCoreDuration, benefits/JSON, relatedSlugs, bgColor, displayOrder)
+  - Seed updated: all 6 soins re-seeded with full rich content from soins.ts
+  - API routes: `GET/POST /api/dashboard/services`, `PATCH/DELETE/toggle/duplicate /api/dashboard/services/[id]`
+  - TanStack Query hooks: `src/lib/queries/services.ts`
+  - Dashboard page: service grid, KPI row, filters, publish toggle, reorder (↑↓), duplicate, delete with confirmation
+  - Edit/create slide-over modal: all fields, dynamic benefits editor, related services picker, color swatch
+  - Sidebar nav item added (Prestations)
+  - `/prestations` page wired to DB (Server Component + ISR 60s, client filter)
+  - `/soins/[id]` page wired to DB via `GET /api/services/[slug]` — replaces static SOINS import
 - ⬜ Boutique page — product table + orders tab + stock warnings
 - ⬜ Notifications page — email/SMS reminder toggles
 - ⬜ `POST /api/dashboard/appointments/:id/confirm` — confirm appointment + invalidate query cache
@@ -432,10 +449,10 @@
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 5 — Notifications
-## Last session: 2026-05-21
-## Next step: Set RESEND_API_KEY → test emails, then 24h reminder cron + contact form email
-## Also done this session: Booking confirmation email + specialist notification wired into Stripe webhook
+## Current phase: Phase 6 — Specialist Dashboard
+## Last session: 2026-05-23
+## Next step: Clients page → Finances page → Boutique
+## Also done this session: Avis moderation page (Phase 6), contact form + newsletter (Phase 5), booking emails (Phase 5)
 
 ---
 

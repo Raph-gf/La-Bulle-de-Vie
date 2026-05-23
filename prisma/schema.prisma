@@ -102,6 +102,26 @@ model Service {
   id              String          @id @default(uuid())
   name            String
   slug            String          @unique
+  /// Short label shown on cards, e.g. "Signature", "Éclat"
+  tagline         String?
+  /// One-liner: who this service is for, e.g. "Tensions, fatigue accumulée"
+  forWho          String?
+  /// Hook paragraph shown on the service card and detail page header
+  shortDescription  String?
+  /// Extended description shown in the detail section
+  longDescription   String?
+  /// What happens during the main ritual step
+  ritualCore        String?
+  /// Duration string for the main step, e.g. "~ 50 minutes"
+  ritualCoreDuration String?
+  /// Array of benefit objects: [{title: string, description: string}]
+  benefits        Json?
+  /// Slugs of related services shown at the bottom of the detail page
+  relatedSlugs    String[]
+  /// Background hex color for the service card, e.g. "#2C1F14"
+  bgColor         String?
+  /// Display order in the catalog — lower = shown first
+  displayOrder    Int             @default(0)
   description     String
   durationMinutes Int
   /// Price in euro cents (e.g. 10500 = 105.00 €)
