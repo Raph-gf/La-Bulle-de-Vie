@@ -86,6 +86,7 @@ export default function ComptePage() {
   const [reviewStars, setReviewStars] = useState(0)
   const [reviewBody, setReviewBody] = useState("")
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
   // Form refs for settings
   const pfFirstNameRef = useRef<HTMLInputElement>(null)
   const pfLastNameRef = useRef<HTMLInputElement>(null)
@@ -807,21 +808,42 @@ export default function ComptePage() {
                                       En attente de validation
                                     </span>
                                   )}
-                                  {appt.review.specialistReply && (
-                                    <div style={{
-                                      marginTop: 4, padding: "10px 14px",
-                                      background: "var(--cream)", borderRadius: 10,
-                                      borderLeft: "3px solid var(--terra)",
-                                      maxWidth: 260, textAlign: "left",
-                                    }}>
-                                      <div style={{ fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--terra)", marginBottom: 5, fontWeight: 600 }}>
-                                        Réponse de Laurence
+                                  {appt.review.specialistReply && (() => {
+                                    const open = expandedReplies.has(appt.review!.id)
+                                    return (
+                                      <div style={{ textAlign: "right" }}>
+                                        <button
+                                          onClick={() => setExpandedReplies(prev => {
+                                            const next = new Set(prev)
+                                            open ? next.delete(appt.review!.id) : next.add(appt.review!.id)
+                                            return next
+                                          })}
+                                          style={{
+                                            background: "none", border: "none", cursor: "pointer",
+                                            fontSize: 11.5, color: "var(--terra)", fontFamily: "var(--sans)",
+                                            display: "inline-flex", alignItems: "center", gap: 5, padding: 0,
+                                          }}
+                                        >
+                                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transition: "transform .25s", transform: open ? "rotate(180deg)" : "none" }}>
+                                            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                          {open ? "Masquer la réponse" : "Réponse du spécialiste"}
+                                        </button>
+                                        {open && (
+                                          <div style={{
+                                            marginTop: 8, padding: "10px 14px", textAlign: "left",
+                                            background: "var(--cream)", borderRadius: 10,
+                                            borderLeft: "3px solid var(--terra)",
+                                            animation: "panelIn .2s ease",
+                                          }}>
+                                            <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.55, margin: 0, fontFamily: "var(--serif)", fontStyle: "italic" }}>
+                                              &ldquo;{appt.review.specialistReply}&rdquo;
+                                            </p>
+                                          </div>
+                                        )}
                                       </div>
-                                      <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5, margin: 0, fontFamily: "var(--serif)", fontStyle: "italic" }}>
-                                        &ldquo;{appt.review.specialistReply}&rdquo;
-                                      </p>
-                                    </div>
-                                  )}
+                                    )
+                                  })()}
                                 </div>
                               ) : canReview ? (
                                 <button className="btn-rate" onClick={() => { setReviewModal({ appointmentId: appt.id, serviceName: appt.service.name }); setReviewStars(0); setReviewBody("") }}>
