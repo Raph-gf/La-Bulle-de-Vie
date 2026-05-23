@@ -116,7 +116,10 @@
   - User name/initial from Supabase auth, working logout (`signOut` + redirect)
   - Live countdown timer, toggle switches, toast notifications
   - Hash-based routing (`#overview`, `#appts`, etc.), mobile drawer
-- ⬜ Profile row auto-created in `profiles` table on signup (DB trigger or callback)
+- ✅ Profile row auto-created in `profiles` table on signup (DB trigger) — `supabase/migrations/002_profile_trigger.sql`
+  - `handle_new_user()` trigger fires AFTER INSERT on `auth.users`
+  - Sets `fullName` from `raw_user_meta_data` (email signup or Google OAuth), falls back to email prefix
+  - `ON CONFLICT DO NOTHING` — idempotent, safe to re-run
 
 ### Mon compte — data to wire up (deferred)
 - ⬜ Appointments view: replace placeholder séances with real Prisma query
@@ -285,8 +288,14 @@
   - Contains: client name/email/phone, service, date, time, location, notes, first-visit badge, amount
   - Recipient: `SPECIALIST_EMAIL` env var (set to raphaelgarnier1997@gmail.com)
   - Sender: `onboarding@resend.dev` (works without domain verification — swap to labulldevie.fr later)
-- ✅ `src/lib/resend/emails.ts` — 3 typed functions: `sendBookingConfirmation`, `sendSpecialistNotification`, `sendAppointmentReminder`
+- ✅ `src/lib/resend/emails.ts` — 4 typed functions: `sendBookingConfirmation`, `sendSpecialistNotification`, `sendAppointmentReminder`, `sendNewReviewNotification`
   - Lazy Resend client: logs warning + no-ops if `RESEND_API_KEY` not set (safe in dev)
+  - `sendNewReviewNotification` — branded HTML, stars rendered as ★/☆ chars, links to dashboard
+- ✅ `onNewBooking` notification pref wired in Stripe webhook — checks `specialist.notificationPrefs.onNewBooking` before firing specialist alert
+- ✅ `POST /api/reviews` — auth-gated, Zod validated (appointmentId UUID, stars 1–5, body 10–1000 chars)
+  - Verifies appointment belongs to current user + status is `completed` + no existing review (409)
+  - Creates review with `approved: false`
+  - Checks `notificationPrefs.onNewReview !== false` before firing `sendNewReviewNotification`
 - ⬜ **Resend account + API key needed** — set `RESEND_API_KEY` in `.env.local` to activate
 - ⬜ **24h reminder cron** — `GET /api/cron/reminders` secured with `CRON_SECRET`, runs daily at 08:00 via Vercel Cron (`vercel.json`), queries confirmed appointments where `slot.date = tomorrow`, checks `prefs.clientReminder24h`, calls `sendAppointmentReminder` per client. Add `CRON_SECRET` to env + Vercel dashboard.
 - ✅ Contact form (`/contact`) — full page built from Figma + wired to Resend
@@ -365,8 +374,23 @@
 - ✅ `POST /api/dashboard/settings` — geocodes cabinet address, saves lat/lng
 
 ### Still to build
-- ⬜ Clients page — searchable/filterable table + sticky detail panel (history, private notes)
-- ⬜ Finances page — KPI tiles + 12-month bar chart + transactions table + Stripe payouts
+- ✅ **Clients page** (`/dashboard/clients`) — (2026-05-23)
+  - `GET /api/dashboard/clients` — all client profiles with `?search=` and `?sort=` params; computes totalSessions, lastVisitDate, totalSpentCents in JS
+  - `GET /api/dashboard/clients/[id]` — full profile + appointment history; derives aggregates
+  - `PATCH /api/dashboard/clients/[id]` — updates `specialistNotes` (Zod max 2000 chars)
+  - TanStack Query hooks: `useClients(search, sort)`, `useClientDetail(id)`, `useUpdateClientNotes()`
+  - KPI bar computed from the already-fetched list (no extra request)
+  - `.split` layout with sticky detail panel — slides in when a client is selected
+  - 300ms search debounce, save button shown only when notes are dirty
+- ✅ **Finances page** (`/dashboard/finances`) + **Revenue chart** — (2026-05-23)
+  - `GET /api/dashboard/finances` — 6 parallel calls: Prisma revenue/refund aggregates, monthly buckets, top services, recent transactions, Stripe balance + payouts
+  - Stripe calls wrapped in `.catch(() => null)` — page works in test/offline mode
+  - Monthly buckets: `Map` pre-initialized with all 12 months so empty months show as 0
+  - `useFinances()` TanStack Query hook, staleTime 2 min
+  - Pure SVG bar chart (ViewBox 600×220, hover tooltip as dark rect with white text, no library)
+  - Top services: CSS `width: ${pct}%` progress bars with transition
+  - Stripe balance tiles show `—` when Stripe not reachable
+  - Transactions table with tab filter (Tous / Confirmés / Annulés)
 - ✅ **Avis page** (`/dashboard/avis`) — full moderation UI (2026-05-21)
   - KPI bar: avg rating (featured tile with stars), total, pending count (amber), approved count (green)
   - Tab bar: En attente / Approuvés / Tous — with live counts, filters review list
@@ -399,10 +423,16 @@
   - Added `r.ok` check + `.catch()` handler so non-JSON / empty-body API errors show "not found" instead of crashing with "Unexpected end of JSON input"
   - Root cause: stale Prisma client in dev server after schema change — restart dev server after `prisma generate`
 - ⬜ Boutique page — product table + orders tab + stock warnings
-- ⬜ Notifications page — email/SMS reminder toggles
+- ✅ **Notifications page** (`/dashboard/notifications`) — (2026-05-23)
+  - `GET /api/dashboard/notifications` — merges saved prefs with `DEFAULT_NOTIF_PREFS` so new keys always have a default
+  - `PATCH /api/dashboard/notifications` — Zod validates 6 boolean fields
+  - Auto-save with 600ms debounce via `useRef<ReturnType<typeof setTimeout>>`
+  - Optimistic UI update + revert on failure
+  - `SettingRow` component with custom CSS toggle switch + optional "Bientôt" badge
+  - Sidebar nav item added to Réglages section
 - ⬜ `POST /api/dashboard/appointments/:id/confirm` — confirm appointment + invalidate query cache
 - ⬜ Google Calendar OAuth integration — real two-way sync
-- ⬜ Revenue chart — real SVG bars from Stripe/DB data
+- ✅ Revenue chart — real SVG bars from Stripe/DB data (see Finances page above)
 
 ---
 
@@ -422,8 +452,8 @@
 ## Phase 8 — Missing pages & loose ends
 
 - ⬜ Password reset form — `/login?mode=reset` (after clicking email link, let user enter new password via `updateUser`)
-- ⬜ Profile auto-created in `profiles` table on signup (Supabase DB trigger)
-- ⬜ Review submission — form triggered from `/compte#history` after completed appointment
+- ✅ Profile auto-created in `profiles` table on signup (Supabase DB trigger) — see Phase 3
+- ✅ Review submission API — `POST /api/reviews` created (see Phase 5); still need the frontend form in `/compte#history`
 - ⬜ Gift card purchase + redemption flow
 - ⬜ Favorites — store in DB, toggle from `/soins/[id]` page
 - ⬜ 404 page
@@ -463,8 +493,8 @@
 
 ## Current phase: Phase 6 — Specialist Dashboard
 ## Last session: 2026-05-23
-## Next step: Clients page → Finances page → Boutique
-## Also done this session: Image upload for services (multi-image, Supabase Storage), soins page gallery wired to real images, fetch error guard on /soins/[id]
+## Next step: Password reset form (`/login?mode=reset`) → wire `/compte` data → Boutique page → E-commerce
+## Also done this session: Clients page, Finances page + SVG revenue chart, Notifications page + auto-save, notification prefs wired to Stripe webhook + review API, Profile DB trigger (002_profile_trigger.sql), POST /api/reviews
 
 ---
 
