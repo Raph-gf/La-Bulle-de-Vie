@@ -503,7 +503,11 @@ export default function ComptePage() {
               <div className="v-head">
                 <span className="eyebrow">{todayFormatted}</span>
                 <h1>Bonjour, <span className="italic">{firstName}.</span></h1>
-                <p className="lede">Votre prochaine bulle est demain à 10h00. Voici tout ce qu&apos;il faut savoir.</p>
+                <p className="lede">
+                  {stats?.nextAppointment
+                    ? `Votre prochaine séance est le ${fmtApptDateLong(stats.nextAppointment.slot.date)} à ${stats.nextAppointment.slot.startTime.replace(":", "h")}. Voici votre espace.`
+                    : "Bienvenue dans votre espace. Réservez votre prochaine bulle quand vous le souhaitez."}
+                </p>
               </div>
 
               {stats?.nextAppointment ? (
@@ -620,7 +624,7 @@ export default function ComptePage() {
               </div>
               <div className="card" style={{ marginBottom: 24 }}>
                 <div className="card-head">
-                  <h3>À venir</h3>
+                  <h3>Mes rendez‑vous</h3>
                   <Link href="/booking">+ Nouveau rendez‑vous</Link>
                 </div>
                 {apptsLoading && (
@@ -632,29 +636,85 @@ export default function ComptePage() {
                     <Link href="/booking" className="btn-small primary">Réserver une séance →</Link>
                   </div>
                 )}
-                {!apptsLoading && appts.map(appt => {
-                  const { day, month } = fmtApptDate(appt.slot.date)
-                  const statusCls = appt.status === "confirmed" ? "ok" : appt.status === "pending" ? "pending" : ""
-                  const statusLabel = appt.status === "confirmed" ? "Confirmé" : appt.status === "pending" ? "En attente" : appt.status
-                  const lieu = appt.location === "domicile" ? `À domicile${appt.clientAddress ? ` — ${appt.clientAddress}` : ""}` : "Cabinet Lyon 7ᵉ"
-                  return (
-                    <div key={appt.id} className="appt-item">
-                      <div className="appt-date"><div className="d">{day}</div><div className="m">{month}</div></div>
-                      <div className="appt-info">
-                        <div className="nm">{appt.service.name} · {appt.service.durationMinutes} min</div>
-                        <div className="det">
-                          {appt.slot.startTime.replace(":", "h")}
-                          <span className="sep">·</span>{lieu}
-                          <span className="sep">·</span>{(appt.service.price / 100).toFixed(0)}€
-                          <span className="sep">·</span><span className={`appt-status${statusCls ? " " + statusCls : ""}`}>{statusLabel}</span>
+                {!apptsLoading && appts.length > 0 && (() => {
+                  const nowUTC = new Date()
+                  const todayStr = nowUTC.toISOString().split("T")[0]
+
+                  const todayAppts = appts.filter(a => a.slot.date.split("T")[0] === todayStr)
+                  const futureAppts = appts.filter(a => a.slot.date.split("T")[0] > todayStr)
+
+                  function renderAppt(appt: Appt, isToday: boolean) {
+                    const { day, month } = fmtApptDate(appt.slot.date)
+                    const lieu = appt.location === "domicile"
+                      ? `À domicile${appt.clientAddress ? ` — ${appt.clientAddress}` : ""}`
+                      : "Cabinet"
+
+                    // How many hours until the slot?
+                    const [slotH, slotM] = appt.slot.startTime.split(":").map(Number)
+                    const slotDate = new Date(appt.slot.date)
+                    slotDate.setUTCHours(slotH - 2, slotM, 0, 0) // Paris UTC+2 → UTC
+                    const hoursUntil = (slotDate.getTime() - nowUTC.getTime()) / 3_600_000
+
+                    const statusCls = appt.status === "confirmed" ? "ok" : appt.status === "pending" ? "pending" : ""
+                    const statusLabel = isToday
+                      ? (hoursUntil < 0 ? "Passé aujourd'hui" : hoursUntil < 2 ? "Imminent" : "Aujourd'hui")
+                      : appt.status === "confirmed" ? "Confirmé" : "En attente"
+
+                    const canCancel = hoursUntil > 4 // policy: >4h before
+                    const cancelLabel = hoursUntil > 24 ? "Annuler" : hoursUntil > 4 ? "Annuler (50%)" : null
+
+                    return (
+                      <div key={appt.id} className="appt-item">
+                        <div className="appt-date">
+                          <div className="d">{day}</div>
+                          <div className="m">{month}</div>
+                        </div>
+                        <div className="appt-info">
+                          <div className="nm">{appt.service.name} · {appt.service.durationMinutes} min</div>
+                          <div className="det">
+                            {appt.slot.startTime.replace(":", "h")}
+                            <span className="sep">·</span>{lieu}
+                            <span className="sep">·</span>{(appt.service.price / 100).toFixed(0)}€
+                            <span className="sep">·</span>
+                            <span className={`appt-status${statusCls ? " " + statusCls : ""}`}>{statusLabel}</span>
+                          </div>
+                        </div>
+                        <div className="appt-actions">
+                          {canCancel && cancelLabel ? (
+                            <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) toast.success("Annulation envoyée — l'équipe vous confirme le remboursement.") }}>
+                              {cancelLabel}
+                            </button>
+                          ) : isToday ? (
+                            <span style={{ fontSize: 12, color: "var(--mute)", fontStyle: "italic" }}>Annulation impossible</span>
+                          ) : null}
                         </div>
                       </div>
-                      <div className="appt-actions">
-                        <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) toast.success("Annulation envoyée") }}>Annuler</button>
-                      </div>
-                    </div>
+                    )
+                  }
+
+                  return (
+                    <>
+                      {todayAppts.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--terra)", fontWeight: 600, marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid var(--line)" }}>
+                            Aujourd&apos;hui
+                          </div>
+                          {todayAppts.map(a => renderAppt(a, true))}
+                        </>
+                      )}
+                      {futureAppts.length > 0 && (
+                        <>
+                          {todayAppts.length > 0 && (
+                            <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--mute)", fontWeight: 600, margin: "20px 0 12px", paddingBottom: 10, borderBottom: "1px solid var(--line)" }}>
+                              À venir
+                            </div>
+                          )}
+                          {futureAppts.map(a => renderAppt(a, false))}
+                        </>
+                      )}
+                    </>
                   )
-                })}
+                })()}
               </div>
               <div className="card">
                 <div className="card-head"><h3>Politique d&apos;annulation</h3></div>
@@ -699,8 +759,20 @@ export default function ComptePage() {
                       </div>
                       {history.map(appt => {
                         const { day, month } = fmtApptDate(appt.slot.date)
-                        const canReview = appt.status === "completed" && !appt.review
-                        const statusLabel = appt.status === "completed" ? "Terminé" : appt.status === "cancelled" ? "Annulé" : appt.status
+                        const todayStr = new Date().toISOString().split("T")[0]
+                        const slotStr = appt.slot.date.split("T")[0]
+                        const isPast = slotStr < todayStr
+
+                        // Status label: derive from date, not just DB status
+                        // Specialist may not have clicked "completed" yet, but the appointment happened
+                        const statusLabel =
+                          appt.status === "completed" ? "Terminé" :
+                          appt.status === "cancelled" ? "Annulé" :
+                          isPast ? "Effectué" :
+                          "Confirmé"
+
+                        // Allow review for any past non-cancelled appointment without an existing review
+                        const canReview = isPast && appt.status !== "cancelled" && !appt.review
                         return (
                           <div key={appt.id} className="hist-item">
                             <div className="hist-date"><strong>{day}</strong>{month}</div>
