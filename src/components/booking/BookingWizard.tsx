@@ -54,6 +54,16 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
   const [payError, setPayError] = useState<string | null>(null)
   const [expressAvailable, setExpressAvailable] = useState(false)
 
+  async function confirmBooking(paymentIntentId: string) {
+    // Call server-side confirm: creates appointment + sends emails.
+    // Fire-and-forget — don't block the success redirect over email issues.
+    fetch("/api/booking/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId }),
+    }).catch(err => console.error("[booking/confirm] client call failed:", err))
+  }
+
   async function handlePay(e: React.FormEvent) {
     e.preventDefault()
     if (!stripe || !elements) return
@@ -77,6 +87,7 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
     }
 
     if (paymentIntent?.status === "succeeded") {
+      confirmBooking(paymentIntent.id)
       onSuccess()
     }
   }
@@ -104,6 +115,7 @@ function StripePaymentBlock({ amountInCents, refCode, onSuccess }: StripePayment
       toast.error(msg)
       setPaying(false)
     } else if (paymentIntent?.status === "succeeded") {
+      confirmBooking(paymentIntent.id)
       onSuccess()
     }
   }

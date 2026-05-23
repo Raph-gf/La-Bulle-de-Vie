@@ -175,7 +175,7 @@ model Appointment {
   guestName             String?
   guestEmail            String?
   guestPhone            String?
-  stripePaymentIntentId String?
+  stripePaymentIntentId String?           @unique
   refundStatus          RefundStatus      @default(none)
   /// Client address for home visits — required when location = "domicile"
   clientAddress         String?
