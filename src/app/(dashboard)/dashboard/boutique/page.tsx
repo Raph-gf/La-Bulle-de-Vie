@@ -47,6 +47,27 @@ function ProductModal({ product, onClose }: ProductModalProps) {
   const create = useCreateProduct()
   const update = useUpdateProduct()
 
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/dashboard/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? "Erreur upload"); return }
+      set("imageUrl", data.url)
+    } catch {
+      toast.error("Erreur lors de l'upload")
+    } finally {
+      setUploading(false)
+      e.target.value = ""
+    }
+  }
+
   const [form, setForm] = useState<ProductInput>({
     name: product?.name ?? "",
     description: product?.description ?? "",
@@ -220,27 +241,57 @@ function ProductModal({ product, onClose }: ProductModalProps) {
           <div className="so-section">
             <div className="so-section-title">Image</div>
             <div className="so-field full">
-              <label className="so-label" htmlFor="p-img">
-                URL de l'image <span className="hint">(optionnel)</span>
-              </label>
-              <input
-                id="p-img"
-                className="so-input"
-                type="url"
-                value={form.imageUrl ?? ""}
-                onChange={(e) => set("imageUrl", e.target.value || null)}
-                placeholder="https://…"
-              />
+              {form.imageUrl ? (
+                <div style={{ position: "relative", width: "100%", height: 180, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}>
+                  <img src={form.imageUrl} alt="Aperçu" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #00000066, transparent)", display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "10px 12px" }}>
+                    <label style={{
+                      cursor: "pointer", padding: "6px 12px", borderRadius: 6,
+                      background: "#ffffffcc", color: "var(--ink)", fontSize: 12, fontWeight: 500,
+                    }}>
+                      Changer
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" style={{ display: "none" }} onChange={handleFileChange} disabled={uploading} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => set("imageUrl", null)}
+                      style={{ padding: "6px 12px", borderRadius: 6, background: "#ffffffcc", color: "#c95555", fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer" }}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 10, width: "100%", height: 150, borderRadius: 10,
+                  border: "2px dashed var(--line)", cursor: uploading ? "not-allowed" : "pointer",
+                  background: "var(--paper)", transition: "border-color .25s",
+                  opacity: uploading ? 0.7 : 1,
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--ink)")}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--line)")}
+                >
+                  {uploading ? (
+                    <>
+                      <div style={{ width: 28, height: 28, border: "2.5px solid var(--line)", borderTopColor: "var(--terra)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                      <span style={{ fontSize: 13, color: "var(--mute)" }}>Upload en cours…</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="28" height="28" fill="none" stroke="var(--mute)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                      <span style={{ fontSize: 13, color: "var(--mute)", textAlign: "center" }}>
+                        Cliquez pour uploader<br />
+                        <span style={{ fontSize: 11 }}>JPEG, PNG, WebP, AVIF — max 5 Mo</span>
+                      </span>
+                    </>
+                  )}
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" style={{ display: "none" }} onChange={handleFileChange} disabled={uploading} />
+                </label>
+              )}
             </div>
-            {form.imageUrl && (
-              <div style={{ width: "100%", height: 140, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}>
-                <img
-                  src={form.imageUrl}
-                  alt="Aperçu"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-            )}
           </div>
         </form>
 
@@ -674,6 +725,7 @@ export default function BoutiquePage() {
 
   return (
     <div className="view active">
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div className="view-head">
         <div>
           <h1>Boutique</h1>
