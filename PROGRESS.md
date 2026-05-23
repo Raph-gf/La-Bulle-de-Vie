@@ -454,6 +454,7 @@
 - ⬜ Password reset form — `/login?mode=reset` (after clicking email link, let user enter new password via `updateUser`)
 - ✅ Profile auto-created in `profiles` table on signup (Supabase DB trigger) — see Phase 3
 - ✅ Review submission API — `POST /api/reviews` created (see Phase 5); still need the frontend form in `/compte#history`
+- ⬜ Specialist reply display in `/compte#history` — current accordion works but the visual style needs revisiting (Raphael not happy with it — redo with a different approach)
 - ⬜ Gift card purchase + redemption flow
 - ⬜ Favorites — store in DB, toggle from `/soins/[id]` page
 - ⬜ 404 page
