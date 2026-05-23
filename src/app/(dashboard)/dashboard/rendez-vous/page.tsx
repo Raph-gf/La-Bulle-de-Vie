@@ -1,5 +1,5 @@
 "use client"
-import { useState, Fragment } from "react"
+import { useState, Fragment, type ReactNode } from "react"
 import Link from "next/link"
 import { useWeekAppointments, useAppointments, useConfirmAppointment, type Appt } from "@/lib/queries/appointments"
 import { toast } from "sonner"
@@ -34,7 +34,7 @@ function weekLabel(mon: Date): string {
   return `${mon.getDate()} ${MONTHS_SHORT[mon.getMonth()]} — ${sun.getDate()} ${MONTHS_SHORT[sun.getMonth()]} ${sun.getFullYear()}`
 }
 function fmtDateKey(iso: string) {
-  const d = new Date(iso + "T00:00:00")
+  const d = new Date(iso.split("T")[0] + "T00:00:00")
   return `${DOW_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_LONG[d.getMonth()]}`
 }
 function timeToMin(t: string): number {
@@ -272,7 +272,7 @@ export default function RendezVousPage() {
             onClick={() => setSelected(null)}
           />
           <div style={{
-            position: "fixed", top: 0, right: 0, bottom: 0, width: 360,
+            position: "fixed", top: 0, right: 0, bottom: 0, width: 400,
             background: "#fff", borderLeft: "1px solid var(--line)",
             boxShadow: "-12px 0 40px -20px #2218127a",
             zIndex: 50, padding: 28, overflowY: "auto",
@@ -293,6 +293,7 @@ export default function RendezVousPage() {
 // ── Detail panel ────────────────────────────────────────────────────
 function DetailPanel({ appt, onClose }: { appt: Appt; onClose: () => void }) {
   const name = appt.client?.fullName ?? appt.guestName ?? "Invité"
+  const initials = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
   const confirm = useConfirmAppointment()
 
   async function handleConfirm() {
@@ -305,54 +306,149 @@ function DetailPanel({ appt, onClose }: { appt: Appt; onClose: () => void }) {
     }
   }
 
+  const statusConfig = {
+    pending:   { label: "En attente",  bg: "#FEF3C7", color: "#92400E" },
+    confirmed: { label: "Confirmé",    bg: "#D1FAE5", color: "#065F46" },
+    cancelled: { label: "Annulé",      bg: "#FEE2E2", color: "#991B1B" },
+    completed: { label: "Effectué",    bg: "#EDE9FE", color: "#5B21B6" },
+  }
+  const sc = statusConfig[appt.status as keyof typeof statusConfig] ?? { label: appt.status, bg: "#F3F4F6", color: "#374151" }
+
+  const locationLabel = appt.location === "domicile"
+    ? `À domicile${appt.clientAddress ? ` · ${appt.clientAddress}` : ""}`
+    : "Au cabinet"
+
   return (
-    <>
-      <div className="av-lg">{name.charAt(0).toUpperCase()}</div>
-      <h3 style={{ marginTop: 14 }}>{name}</h3>
-      {appt.guestEmail && <p style={{ fontSize: 13, color: "var(--mute)", marginTop: 4 }}>{appt.guestEmail}</p>}
-      <div className="meta" style={{ marginTop: 10 }}>
-        <span><strong>Date :</strong> {fmtDateKey(appt.slot.date)} à {fmtTime(appt.slot.startTime)}</span>
-        <span><strong>Soin :</strong> {appt.service.name} ({appt.service.durationMinutes} min)</span>
-        <span><strong>Lieu :</strong> {appt.location === "domicile" ? `À domicile${appt.clientAddress ? ` — ${appt.clientAddress}` : ""}` : "Cabinet"}</span>
-        <span>
-          <strong>Statut : </strong>
-          <span className={`status ${appt.status === "confirmed" ? "ok" : appt.status === "pending" ? "pending" : ""}`} style={{ display: "inline-flex" }}>
-            {appt.status === "confirmed" ? "Confirmé" : appt.status === "pending" ? "En attente" : appt.status}
-          </span>
-        </span>
-        {appt.isFirstVisit && <span style={{ color: "var(--terra)" }}>⭐ Première visite</span>}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+
+      {/* ── Hero ─── */}
+      <div style={{ paddingBottom: 20, borderBottom: "1px solid var(--line)", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase",
+            padding: "4px 10px", borderRadius: 20,
+            background: sc.bg, color: sc.color,
+          }}>{sc.label}</span>
+          {appt.isFirstVisit && (
+            <span style={{
+              fontSize: 11, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase",
+              padding: "4px 10px", borderRadius: 20,
+              background: "#FFF7ED", color: "#C2410C",
+            }}>1ère visite</span>
+          )}
+        </div>
+        <p style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 600, lineHeight: 1.25, marginBottom: 8 }}>
+          {appt.service.name}
+        </p>
+        <p style={{ fontSize: 13.5, color: "var(--mute)", display: "flex", alignItems: "center", gap: 6 }}>
+          <CalIcon />
+          {fmtDateKey(appt.slot.date)} · {fmtTime(appt.slot.startTime)} · {appt.service.durationMinutes} min
+        </p>
       </div>
+
+      {/* ── Client ─── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 20, borderBottom: "1px solid var(--line)", marginBottom: 20 }}>
+        <div style={{
+          width: 46, height: 46, borderRadius: "50%",
+          background: "var(--cream)", border: "1.5px solid var(--line)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "var(--serif)", fontSize: 17, fontWeight: 600, color: "var(--bark)", flexShrink: 0,
+        }}>{initials}</div>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{name}</p>
+          {appt.guestEmail && (
+            <p style={{ fontSize: 12.5, color: "var(--mute)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {appt.guestEmail}
+            </p>
+          )}
+          {!appt.guestEmail && appt.client && (
+            <p style={{ fontSize: 12.5, color: "var(--mute)" }}>Client enregistré</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Details grid ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+        <DetailItem icon={<PinIcon />} label="Lieu" value={locationLabel} />
+        <DetailItem icon={<ClockIcon />} label="Durée" value={`${appt.service.durationMinutes} min`} />
+        {appt.service.price != null && (
+          <DetailItem icon={<EuroIcon />} label="Tarif" value={`${(appt.service.price / 100).toFixed(2)} €`} />
+        )}
+      </div>
+
+      {/* ── Notes ─── */}
       {appt.notes && (
-        <div className="notes" style={{ marginTop: 16 }}>
-          <span className="ico">✎</span><em>{appt.notes}</em>
+        <div style={{
+          background: "#FAFAF8", border: "1px solid var(--line)", borderRadius: 10,
+          padding: "14px 16px", marginBottom: 20,
+        }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 8 }}>Notes du client</p>
+          <p style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.6 }}>{appt.notes}</p>
         </div>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+
+      {/* ── Actions ─── */}
+      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8, paddingTop: 20, borderTop: "1px solid var(--line)" }}>
         {appt.status === "pending" && (
-          <button
-            className="tbtn"
-            style={{ flex: 1 }}
-            onClick={handleConfirm}
-            disabled={confirm.isPending}
-          >
-            {confirm.isPending ? "Confirmation…" : "Confirmer"}
+          <button className="tbtn" onClick={handleConfirm} disabled={confirm.isPending} style={{ width: "100%", justifyContent: "center" }}>
+            {confirm.isPending ? "Confirmation…" : "✓ Confirmer le rendez-vous"}
           </button>
         )}
         {appt.status === "confirmed" && (
           <div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            gap: 6, padding: "10px 16px", borderRadius: 8,
-            background: "#EAF1E8", color: "#3D6346", fontSize: 13, fontWeight: 500,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            padding: "11px 16px", borderRadius: 10, background: "#D1FAE5", color: "#065F46",
+            fontSize: 13.5, fontWeight: 600,
           }}>
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="#5C8262" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg width="15" height="15" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#065F46" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Confirmé
+            Rendez-vous confirmé
           </div>
         )}
-        <button className="tbtn ghost" onClick={onClose}>Fermer</button>
+        <button className="tbtn ghost" onClick={onClose} style={{ width: "100%", justifyContent: "center" }}>Fermer</button>
       </div>
-    </>
+    </div>
+  )
+}
+
+function DetailItem({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div>
+      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
+        {icon}{label}
+      </p>
+      <p style={{ fontSize: 13.5, color: "var(--ink)", fontWeight: 500 }}>{value}</p>
+    </div>
+  )
+}
+
+function CalIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+    </svg>
+  )
+}
+function PinIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>
+    </svg>
+  )
+}
+function ClockIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+    </svg>
+  )
+}
+function EuroIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 10h12M4 14h12M19.5 8a6.5 6.5 0 1 0 0 8"/>
+    </svg>
   )
 }
 
