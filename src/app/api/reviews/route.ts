@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const { appointmentId, stars, body: reviewBody } = parsed.data
 
-    // Verify the appointment belongs to this client and is completed
+    // Verify the appointment belongs to this client and has taken place
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
       select: {
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         service: { select: { name: true } },
         client: { select: { fullName: true } },
         review: { select: { id: true } },
+        slot: { select: { date: true } },
       },
     })
 
@@ -52,8 +53,15 @@ export async function POST(req: NextRequest) {
     if (appointment.clientId !== user.id) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 })
     }
-    if (appointment.status !== "completed") {
-      return NextResponse.json({ error: "Le rendez-vous n'est pas encore terminé" }, { status: 400 })
+    if (appointment.status === "cancelled") {
+      return NextResponse.json({ error: "Ce rendez-vous a été annulé" }, { status: 400 })
+    }
+    // Allow review once the slot date is in the past (specialist may not have clicked "completed" yet)
+    const slotDate = new Date(appointment.slot.date)
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    if (slotDate >= today && appointment.status !== "completed") {
+      return NextResponse.json({ error: "Le rendez-vous n'a pas encore eu lieu" }, { status: 400 })
     }
     if (appointment.review) {
       return NextResponse.json({ error: "Vous avez déjà laissé un avis pour ce rendez-vous" }, { status: 409 })
