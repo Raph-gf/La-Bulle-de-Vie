@@ -386,6 +386,18 @@
   - Sidebar nav item added (Prestations)
   - `/prestations` page wired to DB (Server Component + ISR 60s, client filter)
   - `/soins/[id]` page wired to DB via `GET /api/services/[slug]` — replaces static SOINS import
+- ✅ **Image upload for services** (2026-05-23)
+  - `POST /api/dashboard/upload` — validates type (JPEG/PNG/WebP/GIF/AVIF, max 5 MB), uploads to Supabase Storage bucket `service-images`, returns public URL
+  - `src/lib/supabase/admin.ts` — service-role client (bypasses Storage RLS); anon key cannot write to Storage without explicit policies
+  - Schema: `imageUrl String?` → `imageUrls String[]` (up to 3 per service — 1 hero + 2 secondary)
+  - `prisma db push --accept-data-loss` + `prisma generate` applied
+  - `MultiImageUploader` component in ServiceModal: 3 labelled slots, each independently uploadable/removable, spinner during upload
+  - Public `/soins/[id]` gallery wired: uses `imageUrls[0/1/2]` with `object-fit: cover`; falls back to brand colours when slot empty
+  - `ServiceCard` thumbnail uses `imageUrls[0]`
+  - **Setup required**: create bucket `service-images` (public) in Supabase Storage dashboard + fill `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`
+- ✅ **Bug fix** — `/soins/[id]` fetch guard (2026-05-23)
+  - Added `r.ok` check + `.catch()` handler so non-JSON / empty-body API errors show "not found" instead of crashing with "Unexpected end of JSON input"
+  - Root cause: stale Prisma client in dev server after schema change — restart dev server after `prisma generate`
 - ⬜ Boutique page — product table + orders tab + stock warnings
 - ⬜ Notifications page — email/SMS reminder toggles
 - ⬜ `POST /api/dashboard/appointments/:id/confirm` — confirm appointment + invalidate query cache
@@ -452,7 +464,7 @@
 ## Current phase: Phase 6 — Specialist Dashboard
 ## Last session: 2026-05-23
 ## Next step: Clients page → Finances page → Boutique
-## Also done this session: Avis moderation page (Phase 6), contact form + newsletter (Phase 5), booking emails (Phase 5)
+## Also done this session: Image upload for services (multi-image, Supabase Storage), soins page gallery wired to real images, fetch error guard on /soins/[id]
 
 ---
 
