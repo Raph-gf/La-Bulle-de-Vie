@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -18,11 +18,52 @@ type Appt = {
   slot: { date: string; startTime: string }
 }
 
+type HistAppt = {
+  id: string
+  status: string
+  amountPaid: number
+  review: { id: string; stars: number } | null
+  service: { name: string; durationMinutes: number }
+  slot: { date: string; startTime: string }
+}
+
+type NextAppt = {
+  id: string
+  location: string
+  clientAddress: string | null
+  amountPaid: number
+  service: { name: string; durationMinutes: number; price: number }
+  slot: { date: string; startTime: string }
+}
+
+type Stats = {
+  totalSessions: number
+  reviewsCount: number
+  topService: string | null
+  nextAppointment: NextAppt | null
+}
+
+type ProfileData = {
+  fullName: string
+  phone: string | null
+  preferredLocation: string | null
+  defaultShippingAddress: string | null
+  avatarUrl: string | null
+}
+
+type ReviewModal = { appointmentId: string; serviceName: string } | null
+
 const MONTHS_SHORT = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Aoû","Sep","Oct","Nov","Déc"]
+const MONTHS_LONG = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
 
 function fmtApptDate(iso: string) {
   const d = new Date(iso)
   return { day: d.getUTCDate(), month: MONTHS_SHORT[d.getUTCMonth()] }
+}
+
+function fmtApptDateLong(iso: string) {
+  const d = new Date(iso)
+  return `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 }
 
 export default function ComptePage() {
@@ -34,8 +75,22 @@ export default function ComptePage() {
   const [userInitial, setUserInitial] = useState("?")
   const [appts, setAppts] = useState<Appt[]>([])
   const [apptsLoading, setApptsLoading] = useState(false)
+  const [history, setHistory] = useState<HistAppt[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [profileSaving, setProfileSaving] = useState(false)
   const [countdown, setCountdown] = useState({ d: "00", h: "00", m: "00" })
   const [toggles, setToggles] = useState({ "2fa": false, rappel24: true, rappel2h: true, sms: false, newsletter: true })
+  const [reviewModal, setReviewModal] = useState<ReviewModal>(null)
+  const [reviewStars, setReviewStars] = useState(0)
+  const [reviewBody, setReviewBody] = useState("")
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  // Form refs for settings
+  const pfFirstNameRef = useRef<HTMLInputElement>(null)
+  const pfLastNameRef = useRef<HTMLInputElement>(null)
+  const pfPhoneRef = useRef<HTMLInputElement>(null)
+  const pfAddressRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
@@ -49,21 +104,37 @@ export default function ComptePage() {
     const hash = window.location.hash.slice(1) as View
     if (ALL_VIEWS.includes(hash)) setView(hash)
 
-    // Countdown to next appointment (tomorrow 10h00 as placeholder)
-    const target = new Date()
-    target.setDate(target.getDate() + 1)
-    target.setHours(10, 0, 0, 0)
+    // Fetch stats (next appointment + counts)
+    fetch("/api/user/stats").then(r => r.json()).then((d: Stats) => {
+      setStats(d)
+    }).catch(() => {})
+
+    // Fetch profile for settings form prefill
+    fetch("/api/user/profile").then(r => r.json()).then(d => {
+      if (d.profile) setProfileData(d.profile)
+    }).catch(() => {})
+  }, [])
+
+  // Update countdown whenever stats (nextAppointment) changes
+  useEffect(() => {
+    const next = stats?.nextAppointment
+    if (!next) return
+
+    const [h, m] = next.slot.startTime.split(":").map(Number)
+    const target = new Date(next.slot.date)
+    target.setUTCHours(h - 2, m, 0, 0) // convert Paris time (UTC+2) to UTC for comparison
+
     function tick() {
       let diff = Math.max(0, target.getTime() - Date.now())
       const d = Math.floor(diff / 86400000); diff -= d * 86400000
-      const h = Math.floor(diff / 3600000); diff -= h * 3600000
-      const m = Math.floor(diff / 60000)
-      setCountdown({ d: String(d).padStart(2, "0"), h: String(h).padStart(2, "0"), m: String(m).padStart(2, "0") })
+      const hr = Math.floor(diff / 3600000); diff -= hr * 3600000
+      const mn = Math.floor(diff / 60000)
+      setCountdown({ d: String(d).padStart(2, "0"), h: String(hr).padStart(2, "0"), m: String(mn).padStart(2, "0") })
     }
     tick()
     const iv = setInterval(tick, 30000)
     return () => clearInterval(iv)
-  }, [])
+  }, [stats?.nextAppointment])
 
   useEffect(() => {
     if (view !== "appts") return
@@ -73,6 +144,67 @@ export default function ComptePage() {
       .then(d => setAppts(d.appointments ?? []))
       .finally(() => setApptsLoading(false))
   }, [view])
+
+  useEffect(() => {
+    if (view !== "history") return
+    setHistoryLoading(true)
+    fetch("/api/user/history")
+      .then(r => r.json())
+      .then(d => setHistory(d.appointments ?? []))
+      .finally(() => setHistoryLoading(false))
+  }, [view])
+
+  async function handleSaveProfile() {
+    const firstName = pfFirstNameRef.current?.value.trim() ?? ""
+    const lastName = pfLastNameRef.current?.value.trim() ?? ""
+    const phone = pfPhoneRef.current?.value.trim() ?? ""
+    const address = pfAddressRef.current?.value.trim() ?? ""
+    if (!firstName) { toast.error("Le prénom est requis"); return }
+
+    setProfileSaving(true)
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName: `${firstName} ${lastName}`.trim(), phone: phone || null, defaultShippingAddress: address || null }),
+      })
+      if (!res.ok) throw new Error()
+      const d = await res.json()
+      const newName = d.profile.fullName
+      setUserName(newName)
+      setUserInitial(newName.charAt(0).toUpperCase())
+      toast.success("Profil mis à jour")
+    } catch {
+      toast.error("Erreur lors de la mise à jour")
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (!reviewModal || reviewStars === 0) { toast.error("Choisissez une note"); return }
+    if (reviewBody.trim().length < 10) { toast.error("L'avis doit faire au moins 10 caractères"); return }
+    setReviewSubmitting(true)
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: reviewModal.appointmentId, stars: reviewStars, body: reviewBody.trim() }),
+      })
+      if (res.status === 409) { toast.error("Vous avez déjà laissé un avis pour cette séance"); setReviewModal(null); return }
+      if (!res.ok) throw new Error()
+      toast.success("Avis envoyé — merci ! Il sera visible après validation.")
+      setReviewModal(null)
+      setReviewStars(0)
+      setReviewBody("")
+      // Refresh history to show star rating
+      fetch("/api/user/history").then(r => r.json()).then(d => setHistory(d.appointments ?? []))
+    } catch {
+      toast.error("Erreur lors de l'envoi")
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }
 
   function go(v: View) {
     setView(v)
@@ -374,57 +506,85 @@ export default function ComptePage() {
                 <p className="lede">Votre prochaine bulle est demain à 10h00. Voici tout ce qu&apos;il faut savoir.</p>
               </div>
 
-              <div className="next-card">
-                <div className="countdown">
-                  <div className="cd-item"><div className="cd-num">{countdown.d}</div><div className="cd-lbl">jours</div></div>
-                  <div className="cd-item"><div className="cd-num">{countdown.h}</div><div className="cd-lbl">heures</div></div>
-                  <div className="cd-item"><div className="cd-num">{countdown.m}</div><div className="cd-lbl">min</div></div>
-                </div>
-                <div className="inner">
-                  <span className="eyebrow">Votre prochaine séance</span>
-                  <h2>Soin du corps<br /><span className="italic">avec Laurence.</span></h2>
-                  <div className="when">
-                    <div className="when-block"><div className="l">Date</div><div className="v big">Mercredi 20 mai</div></div>
-                    <div className="when-block"><div className="l">Heure</div><div className="v big">10h00</div></div>
-                    <div className="when-block"><div className="l">Durée</div><div className="v">60 min</div></div>
-                    <div className="when-block"><div className="l">Lieu</div><div className="v">Cabinet · Lyon 7ᵉ</div></div>
+              {stats?.nextAppointment ? (
+                <div className="next-card">
+                  <div className="countdown">
+                    <div className="cd-item"><div className="cd-num">{countdown.d}</div><div className="cd-lbl">jours</div></div>
+                    <div className="cd-item"><div className="cd-num">{countdown.h}</div><div className="cd-lbl">heures</div></div>
+                    <div className="cd-item"><div className="cd-num">{countdown.m}</div><div className="cd-lbl">min</div></div>
                   </div>
-                  <div className="actions">
-                    <button className="btn primary" onClick={() => go("appts")}>Voir les détails →</button>
-                    <button className="btn">Reporter</button>
+                  <div className="inner">
+                    <span className="eyebrow">Votre prochaine séance</span>
+                    <h2>{stats.nextAppointment.service.name}<br /><span className="italic">avec Laurence.</span></h2>
+                    <div className="when">
+                      <div className="when-block"><div className="l">Date</div><div className="v big">{fmtApptDateLong(stats.nextAppointment.slot.date)}</div></div>
+                      <div className="when-block"><div className="l">Heure</div><div className="v big">{stats.nextAppointment.slot.startTime.replace(":", "h")}</div></div>
+                      <div className="when-block"><div className="l">Durée</div><div className="v">{stats.nextAppointment.service.durationMinutes} min</div></div>
+                      <div className="when-block"><div className="l">Lieu</div><div className="v">{stats.nextAppointment.location === "domicile" ? "À domicile" : "Cabinet"}</div></div>
+                    </div>
+                    <div className="actions">
+                      <button className="btn primary" onClick={() => go("appts")}>Voir les détails →</button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="next-card">
+                  <div className="inner">
+                    <span className="eyebrow">Aucune séance à venir</span>
+                    <h2>Prenez <span className="italic">soin de vous.</span></h2>
+                    <p style={{ color: "#ffffffaa", marginTop: 10, fontSize: 16, lineHeight: 1.55 }}>Réservez votre prochaine bulle en quelques secondes.</p>
+                    <div className="actions" style={{ marginTop: 24 }}>
+                      <a className="btn primary" href="/booking">Réserver une séance →</a>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="stats-row">
-                {[
-                  { l: "Séances", v: "0", sub: "Commencez dès maintenant" },
-                  { l: "Soin préféré", v: "—", sub: "À découvrir", small: true },
-                  { l: "Avis laissés", v: "0", sub: "Séances à noter" },
-                  { l: "Cadeaux reçus", v: "0", sub: "Solde : 0€" },
-                ].map(t => (
-                  <div key={t.l} className="stat-tile">
-                    <div className="l">{t.l}</div>
-                    <div className="v" style={t.small ? { fontSize: 22 } : {}}>{t.v}</div>
-                    <div className="sub">{t.sub}</div>
-                  </div>
-                ))}
+                <div className="stat-tile">
+                  <div className="l">Séances</div>
+                  <div className="v">{stats?.totalSessions ?? "—"}</div>
+                  <div className="sub">{stats?.totalSessions === 0 ? "Commencez dès maintenant" : `${stats?.totalSessions} séance${(stats?.totalSessions ?? 0) > 1 ? "s" : ""} au total`}</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="l">Soin préféré</div>
+                  <div className="v" style={{ fontSize: stats?.topService ? 20 : 32 }}>{stats?.topService ?? "—"}</div>
+                  <div className="sub">{stats?.topService ? "Le plus réservé" : "À découvrir"}</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="l">Avis laissés</div>
+                  <div className="v">{stats?.reviewsCount ?? "—"}</div>
+                  <div className="sub">{stats?.reviewsCount === 0 ? "Partagez votre expérience" : "Merci pour vos retours"}</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="l">Fidélité</div>
+                  <div className="v">{stats?.totalSessions ?? 0}<small>/10</small></div>
+                  <div className="sub">{(stats?.totalSessions ?? 0) >= 10 ? <strong style={{ color: "var(--terra)" }}>Soin offert débloqué ✦</strong> : `Plus que ${10 - (stats?.totalSessions ?? 0)} séances`}</div>
+                </div>
               </div>
 
               <div className="row-2">
                 <div className="loyalty">
-                  <div className="top">
-                    <div>
-                      <h3>Programme fidélité <span style={{ fontFamily: "var(--serif)", color: "var(--terra)", fontStyle: "italic" }}>Bulle d&apos;or</span></h3>
-                      <p style={{ fontSize: 13, color: "var(--mute)", marginTop: 4 }}>Encore 10 séances pour débloquer votre soin offert.</p>
-                    </div>
-                    <div className="count">0<small style={{ color: "var(--mute)", fontSize: 14 }}>/10</small></div>
-                  </div>
-                  <div className="track"><div className="fill" style={{ width: "0%" }} /></div>
-                  <div className="markers">
-                    <span>Début</span>
-                    <span className="next">Prochain : Soin du corps offert ✦</span>
-                  </div>
+                  {(() => {
+                    const n = stats?.totalSessions ?? 0
+                    const pct = Math.min(100, (n / 10) * 100)
+                    return (
+                      <>
+                        <div className="top">
+                          <div>
+                            <h3>Programme fidélité <span style={{ fontFamily: "var(--serif)", color: "var(--terra)", fontStyle: "italic" }}>Bulle d&apos;or</span></h3>
+                            <p style={{ fontSize: 13, color: "var(--mute)", marginTop: 4 }}>{n >= 10 ? "Félicitations ! Votre soin offert est débloqué." : `Encore ${10 - n} séance${10 - n > 1 ? "s" : ""} pour débloquer votre soin offert.`}</p>
+                          </div>
+                          <div className="count">{n}<small style={{ color: "var(--mute)", fontSize: 14 }}>/10</small></div>
+                        </div>
+                        <div className="track"><div className="fill" style={{ width: `${pct}%` }} /></div>
+                        <div className="markers">
+                          <span>Début</span>
+                          <span className="next">{n >= 10 ? "✦ Soin offert disponible" : "Prochain : Soin du corps offert ✦"}</span>
+                        </div>
+                      </>
+                    )
+                  })()}
                   <div className="gift">
                     <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--terra)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>♥</div>
                     <div>
@@ -525,8 +685,44 @@ export default function ComptePage() {
                 <p className="lede">Vos séances passées — retrouvez, notez, téléchargez vos factures.</p>
               </div>
               <div className="card">
-                <div className="card-head"><h3>2026</h3><span className="sub">0 séance · 0€</span></div>
-                <p style={{ color: "var(--mute)", fontSize: 14, fontStyle: "italic", textAlign: "center", padding: "32px 0" }}>Aucune séance passée pour le moment.</p>
+                {historyLoading && <p style={{ color: "var(--mute)", fontStyle: "italic", padding: "32px 0", textAlign: "center" }}>Chargement…</p>}
+                {!historyLoading && history.length === 0 && (
+                  <p style={{ color: "var(--mute)", fontSize: 14, fontStyle: "italic", textAlign: "center", padding: "32px 0" }}>Aucune séance passée pour le moment.</p>
+                )}
+                {!historyLoading && history.length > 0 && (() => {
+                  const total = history.reduce((s, a) => s + (a.amountPaid ?? 0), 0)
+                  return (
+                    <>
+                      <div className="card-head">
+                        <h3>{new Date(history[0].slot.date).getUTCFullYear()}</h3>
+                        <span className="sub">{history.length} séance{history.length > 1 ? "s" : ""} · {(total / 100).toLocaleString("fr-FR", { minimumFractionDigits: 0 })}€</span>
+                      </div>
+                      {history.map(appt => {
+                        const { day, month } = fmtApptDate(appt.slot.date)
+                        const canReview = appt.status === "completed" && !appt.review
+                        const statusLabel = appt.status === "completed" ? "Terminé" : appt.status === "cancelled" ? "Annulé" : appt.status
+                        return (
+                          <div key={appt.id} className="hist-item">
+                            <div className="hist-date"><strong>{day}</strong>{month}</div>
+                            <div className="hist-info">
+                              <div className="nm">{appt.service.name}</div>
+                              <div className="det">{appt.slot.startTime.replace(":", "h")} · {appt.service.durationMinutes} min · {statusLabel}</div>
+                            </div>
+                            <div className="hist-price">{appt.amountPaid ? `${(appt.amountPaid / 100).toFixed(0)}€` : "—"}</div>
+                            <div className="hist-action">
+                              {appt.review
+                                ? <div className="stars-given">{"★".repeat(appt.review.stars)}{"☆".repeat(5 - appt.review.stars)}</div>
+                                : canReview
+                                  ? <button className="btn-rate" onClick={() => { setReviewModal({ appointmentId: appt.id, serviceName: appt.service.name }); setReviewStars(0); setReviewBody("") }}>Laisser un avis →</button>
+                                  : null
+                              }
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </>
+                  )
+                })()}
               </div>
             </section>
           )}
@@ -694,14 +890,16 @@ export default function ComptePage() {
                   </div>
                 </div>
                 <div className="pf-grid">
-                  <div className="pf-field"><label>Prénom</label><input type="text" defaultValue={userName.split(" ")[0]} /></div>
-                  <div className="pf-field"><label>Nom</label><input type="text" defaultValue={userName.split(" ").slice(1).join(" ")} /></div>
-                  <div className="pf-field full"><label>Adresse e‑mail</label><input type="email" defaultValue={userEmail} /><div className="hint">Utilisée pour les confirmations de rendez‑vous et les rappels.</div></div>
-                  <div className="pf-field"><label>Téléphone</label><input type="tel" placeholder="+33 6 00 00 00 00" /></div>
+                  <div className="pf-field"><label>Prénom</label><input ref={pfFirstNameRef} type="text" defaultValue={profileData?.fullName?.split(" ")[0] ?? userName.split(" ")[0]} /></div>
+                  <div className="pf-field"><label>Nom</label><input ref={pfLastNameRef} type="text" defaultValue={profileData?.fullName?.split(" ").slice(1).join(" ") ?? userName.split(" ").slice(1).join(" ")} /></div>
+                  <div className="pf-field full"><label>Adresse e‑mail</label><input type="email" defaultValue={userEmail} readOnly style={{ opacity: .7, cursor: "not-allowed" }} /><div className="hint">L&apos;adresse e‑mail ne peut pas être modifiée ici — contactez le support.</div></div>
+                  <div className="pf-field"><label>Téléphone</label><input ref={pfPhoneRef} type="tel" defaultValue={profileData?.phone ?? ""} placeholder="+33 6 00 00 00 00" /></div>
                   <div className="pf-field"><label>Date de naissance</label><input type="date" /></div>
-                  <div className="pf-field full"><label>Adresse pour soins à domicile</label><input type="text" placeholder="22 rue de la République, Lyon 2ᵉ" /><div className="hint">Ne s&apos;applique que si vous choisissez &quot;à domicile&quot; lors de la réservation.</div></div>
+                  <div className="pf-field full"><label>Adresse pour soins à domicile</label><input ref={pfAddressRef} type="text" defaultValue={profileData?.defaultShippingAddress as string ?? ""} placeholder="22 rue de la République, Lyon 2ᵉ" /><div className="hint">Ne s&apos;applique que si vous choisissez &quot;à domicile&quot; lors de la réservation.</div></div>
                 </div>
-                <button className="btn-save" style={{ marginTop: 24 }} onClick={() => toast.success("Profil mis à jour")}>Enregistrer les modifications →</button>
+                <button className="btn-save" style={{ marginTop: 24 }} onClick={handleSaveProfile} disabled={profileSaving}>
+                  {profileSaving ? "Enregistrement…" : "Enregistrer les modifications →"}
+                </button>
               </div>
 
               <div className="card" style={{ marginBottom: 24 }}>
@@ -750,6 +948,85 @@ export default function ComptePage() {
 
         </main>
       </div>
+
+      {/* ── REVIEW MODAL ────────────────────────────────────── */}
+      {reviewModal && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setReviewModal(null) }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "#0007", backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+          }}
+        >
+          <div style={{
+            background: "#fff", borderRadius: 16, width: 520, maxWidth: "100%",
+            boxShadow: "0 30px 80px -20px #00000050", padding: 36,
+          }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 26, marginBottom: 6 }}>
+              Votre <span style={{ color: "var(--terra)", fontStyle: "italic" }}>avis</span>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--mute)", marginBottom: 24 }}>
+              {reviewModal.serviceName} — comment s&apos;est passée votre séance ?
+            </p>
+
+            {/* Stars */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {[1, 2, 3, 4, 5].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setReviewStars(n)}
+                  style={{
+                    fontSize: 32, background: "none", border: "none", cursor: "pointer",
+                    color: n <= reviewStars ? "var(--terra)" : "var(--line)",
+                    transition: "color .2s", lineHeight: 1,
+                  }}
+                >
+                  ★
+                </button>
+              ))}
+              {reviewStars > 0 && <span style={{ alignSelf: "center", fontSize: 13, color: "var(--mute)", marginLeft: 8 }}>
+                {["", "Décevant", "Passable", "Bien", "Très bien", "Excellent"][reviewStars]}
+              </span>}
+            </div>
+
+            {/* Body */}
+            <textarea
+              value={reviewBody}
+              onChange={e => setReviewBody(e.target.value)}
+              placeholder="Décrivez votre expérience — ce que vous avez aimé, ressenti, vécu… (10 caractères minimum)"
+              style={{
+                width: "100%", minHeight: 120, padding: 14, borderRadius: 10,
+                border: "1px solid var(--line)", fontFamily: "var(--sans)", fontSize: 14,
+                color: "var(--ink)", resize: "vertical", outline: "none",
+                transition: "border-color .25s", lineHeight: 1.55, boxSizing: "border-box",
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--ink)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--line)")}
+            />
+            <div style={{ fontSize: 12, color: "var(--mute)", marginTop: 6, textAlign: "right" }}>
+              {reviewBody.length} / 1000 caractères
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setReviewModal(null)}
+                style={{ padding: "12px 20px", border: "1px solid var(--line)", borderRadius: 999, background: "transparent", cursor: "pointer", fontFamily: "var(--sans)", fontSize: 14, color: "var(--ink-soft)" }}
+              >
+                Annuler
+              </button>
+              <button
+                className="btn-save"
+                onClick={handleSubmitReview}
+                disabled={reviewSubmitting || reviewStars === 0}
+                style={{ opacity: reviewStars === 0 ? 0.5 : 1 }}
+              >
+                {reviewSubmitting ? "Envoi…" : "Envoyer mon avis →"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   )

@@ -33,10 +33,19 @@ const forgotSchema = z.object({
   email: z.string().email("Adresse e‑mail invalide"),
 })
 
+const resetSchema = z.object({
+  password: z.string().min(8, "8 caractères minimum").regex(/\d/, "Doit contenir un chiffre"),
+  confirm: z.string(),
+}).refine((d) => d.password === d.confirm, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirm"],
+})
+
 type LoginData = z.infer<typeof loginSchema>
 type RegisterData = z.infer<typeof registerSchema>
 type ForgotData = z.infer<typeof forgotSchema>
-type Mode = "login" | "register" | "forgot" | "success"
+type ResetData = z.infer<typeof resetSchema>
+type Mode = "login" | "register" | "forgot" | "success" | "reset"
 
 // ── Strength meter ───────────────────────────────────────────────────
 function passwordStrength(v: string): number {
@@ -479,11 +488,13 @@ function ConnexionPage() {
   const [successText, setSuccessText] = useState("")
   const [showLoginPwd, setShowLoginPwd] = useState(false)
   const [showRegPwd, setShowRegPwd] = useState(false)
+  const [showResetPwd, setShowResetPwd] = useState(false)
   const [pwdValue, setPwdValue] = useState("")
+  const [resetPwdValue, setResetPwdValue] = useState("")
 
   useEffect(() => {
     const m = searchParams.get("mode") as Mode | null
-    if (m === "register" || m === "forgot") setMode(m)
+    if (m === "register" || m === "forgot" || m === "reset") setMode(m)
   }, [searchParams])
 
   function go(m: Mode) {
@@ -564,7 +575,7 @@ function ConnexionPage() {
     setAuthError("")
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/login`,
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/login?mode=reset")}`,
     })
     if (error) {
       setAuthError(error.message)
@@ -577,7 +588,24 @@ function ConnexionPage() {
     go("success")
   }
 
+  // ── Reset password form
+  const resetForm = useForm<ResetData>({ resolver: zodResolver(resetSchema) })
+  async function onReset(data: ResetData) {
+    setLoading(true)
+    setAuthError("")
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password: data.password })
+    if (error) {
+      setAuthError(error.message)
+      setLoading(false)
+      return
+    }
+    setLoading(false)
+    router.push("/compte")
+  }
+
   const strength = passwordStrength(pwdValue)
+  const resetStrength = passwordStrength(resetPwdValue)
 
   return (
     <>
@@ -904,6 +932,76 @@ function ConnexionPage() {
                     ← Retour à la connexion
                   </button>
                 </p>
+              </div>
+            )}
+
+            {/* RESET PASSWORD PANEL */}
+            {mode === "reset" && (
+              <div style={{ animation: "panelIn .5s ease" }}>
+                <span className="eyebrow">Nouveau mot de passe</span>
+                <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(36px,3.6vw,48px)", lineHeight: 1.02, fontWeight: 400, marginTop: 14, marginBottom: 14 }}>
+                  Choisissez <span style={{ color: "var(--terra)", fontStyle: "italic" }}>votre nouveau</span> mot de passe.
+                </h1>
+                <p style={{ fontSize: 15, color: "var(--mute)", marginBottom: 32, lineHeight: 1.55 }}>
+                  Choisissez un mot de passe solide. Vous serez redirigé vers votre espace une fois confirmé.
+                </p>
+
+                <form onSubmit={resetForm.handleSubmit(onReset)} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* New password */}
+                  <div className="ifld-wrap" style={{ position: "relative" }}>
+                    <div style={{ position: "relative" }}>
+                      <span style={{ position: "absolute", left: 16, top: 27, transform: "translateY(-50%)", color: "var(--mute)", pointerEvents: "none", display: "flex" }}><IconLock /></span>
+                      <input id="resetPwd" type={showResetPwd ? "text" : "password"} placeholder=" " autoComplete="new-password"
+                        {...resetForm.register("password", { onChange: (e) => setResetPwdValue(e.target.value) })}
+                        style={{ width: "100%", height: 54, padding: "0 46px 0 46px", border: `1px solid ${resetForm.formState.errors.password ? "#C95555" : "var(--line)"}`, borderRadius: 10, background: "#fff", fontFamily: "var(--sans)", fontSize: 15, color: "var(--ink)", outline: "none" }}
+                      />
+                      <label htmlFor="resetPwd" className="float-label" style={{ position: "absolute", left: 46, top: 27, transform: "translateY(-50%)", fontSize: 15, color: "var(--mute)", pointerEvents: "none", transition: "all .2s ease", background: "transparent", padding: "0 4px", lineHeight: 1 }}>Nouveau mot de passe</label>
+                      <button type="button" onClick={() => setShowResetPwd(v => !v)}
+                        style={{ position: "absolute", right: 12, top: 27, transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: showResetPwd ? "var(--terra)" : "var(--mute)", padding: 4, lineHeight: 0 }}>
+                        <EyeIcon open={showResetPwd} />
+                      </button>
+                    </div>
+                    {resetPwdValue && (
+                      <>
+                        <div style={{ display: "flex", gap: 4, marginTop: 8, padding: "0 4px" }}>
+                          {[1, 2, 3, 4].map((i) => (
+                            <span key={i} style={{
+                              flex: 1, height: 3, borderRadius: 99,
+                              background: i <= resetStrength ? strengthColors[resetStrength] : "var(--line)",
+                              transition: "background .4s ease",
+                            }} />
+                          ))}
+                        </div>
+                        <p style={{ fontSize: 11, color: strengthColors[resetStrength] || "var(--mute)", letterSpacing: ".04em", marginTop: 6, padding: "0 4px" }}>
+                          {strengthLabels[resetStrength]}
+                        </p>
+                      </>
+                    )}
+                    {resetForm.formState.errors.password && <p style={{ fontSize: 11.5, color: "#C95555", marginTop: 4, marginLeft: 4 }}>{resetForm.formState.errors.password.message}</p>}
+                  </div>
+
+                  {/* Confirm password */}
+                  <div className="ifld-wrap" style={{ position: "relative" }}>
+                    <div style={{ position: "relative" }}>
+                      <span style={{ position: "absolute", left: 16, top: 27, transform: "translateY(-50%)", color: "var(--mute)", pointerEvents: "none", display: "flex" }}><IconLock /></span>
+                      <input id="resetConfirm" type={showResetPwd ? "text" : "password"} placeholder=" " autoComplete="new-password"
+                        {...resetForm.register("confirm")}
+                        style={{ width: "100%", height: 54, padding: "0 16px 0 46px", border: `1px solid ${resetForm.formState.errors.confirm ? "#C95555" : "var(--line)"}`, borderRadius: 10, background: "#fff", fontFamily: "var(--sans)", fontSize: 15, color: "var(--ink)", outline: "none" }}
+                      />
+                      <label htmlFor="resetConfirm" className="float-label" style={{ position: "absolute", left: 46, top: 27, transform: "translateY(-50%)", fontSize: 15, color: "var(--mute)", pointerEvents: "none", transition: "all .2s ease", background: "transparent", padding: "0 4px", lineHeight: 1 }}>Confirmer le mot de passe</label>
+                    </div>
+                    {resetForm.formState.errors.confirm && <p style={{ fontSize: 11.5, color: "#C95555", marginTop: 4, marginLeft: 4 }}>{resetForm.formState.errors.confirm.message}</p>}
+                  </div>
+
+                  {authError && (
+                    <p style={{ fontSize: 13, color: "#C95555", background: "#C9555510", border: "1px solid #C9555530", borderRadius: 8, padding: "10px 14px" }}>
+                      {authError}
+                    </p>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <SubmitBtn label="Définir mon mot de passe" loading={loading} />
+                  </div>
+                </form>
               </div>
             )}
 
