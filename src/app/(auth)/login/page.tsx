@@ -495,7 +495,12 @@ function ConnexionPage() {
   useEffect(() => {
     const m = searchParams.get("mode") as Mode | null
     if (m === "register" || m === "forgot" || m === "reset") setMode(m)
-  }, [searchParams])
+    const email = searchParams.get("email")
+    if (email) {
+      registerForm.setValue("email", email)
+      loginForm.setValue("email", email)
+    }
+  }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function go(m: Mode) {
     setAuthError("")

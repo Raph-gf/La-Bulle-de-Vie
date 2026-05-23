@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 
 type BookingData = {
   ref: string
@@ -160,12 +161,18 @@ export default function ConfirmationClient() {
   const [ref, setRef] = useState("")
   const [copied, setCopied] = useState(false)
   const [status, setStatus] = useState<PageStatus>("loading")
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const attemptsRef = useRef(0)
 
   // DOM refs for bubble fields — direct DOM manipulation matches the design exactly
   const bubFieldRef = useRef<HTMLDivElement>(null)
   const confFieldRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => setIsLoggedIn(!!user))
+  }, [])
 
   useEffect(() => {
     const urlRef = params.get("ref") ?? ""
@@ -384,9 +391,15 @@ export default function ConfirmationClient() {
 
           {/* Primary CTAs */}
           <div className="ok-cta">
-            <Link href="/compte" className="btn primary">
-              Voir mon espace <span className="arrow">→</span>
-            </Link>
+            {isLoggedIn ? (
+              <Link href="/compte" className="btn primary">
+                Voir mon espace <span className="arrow">→</span>
+              </Link>
+            ) : (
+              <Link href={`/login?mode=register${data?.email ? `&email=${encodeURIComponent(data.email)}` : ""}`} className="btn primary">
+                Créer mon compte <span className="arrow">→</span>
+              </Link>
+            )}
             <button className="btn" onClick={() => window.print()}>
               Imprimer la confirmation
             </button>
@@ -576,24 +589,42 @@ export default function ConfirmationClient() {
         </div>
 
         {/* ════════════ ACCOUNT CTA ════════════ */}
-        <div className="acc-cta">
-          <h3>
-            Gérez vos rendez‑vous{" "}
-            <span style={{ fontStyle: "italic", color: "var(--terra)" }}>en un clic.</span>
-          </h3>
-          <p>
-            Créez un compte pour consulter vos réservations, annuler facilement et retrouver vos factures
-            — sans jamais ressaisir vos informations.
-          </p>
-          <div className="acc-cta-row">
-            <Link href="/register" className="btn primary">
-              Créer un compte gratuit <span className="arrow">→</span>
-            </Link>
-            <Link href="/login" className="btn" style={{ opacity: 0.8 }}>
-              J'ai déjà un compte
-            </Link>
+        {isLoggedIn === false && (
+          <div className="acc-cta">
+            <h3>
+              Gérez vos rendez‑vous{" "}
+              <span style={{ fontStyle: "italic", color: "var(--terra)" }}>en un clic.</span>
+            </h3>
+            <p>
+              Créez un compte pour consulter vos réservations, annuler facilement et retrouver vos factures
+              — sans jamais ressaisir vos informations.
+            </p>
+            <div className="acc-cta-row">
+              <Link href={`/login?mode=register${data?.email ? `&email=${encodeURIComponent(data.email)}` : ""}`} className="btn primary">
+                Créer un compte gratuit <span className="arrow">→</span>
+              </Link>
+              <Link href="/login" className="btn" style={{ opacity: 0.8 }}>
+                J'ai déjà un compte
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
+        {isLoggedIn === true && (
+          <div className="acc-cta">
+            <h3>
+              Tout est prêt{" "}
+              <span style={{ fontStyle: "italic", color: "var(--terra)" }}>pour votre séance.</span>
+            </h3>
+            <p>
+              Retrouvez ce rendez‑vous dans votre espace client, consultez votre historique et gérez vos préférences.
+            </p>
+            <div className="acc-cta-row">
+              <Link href="/compte#appts" className="btn primary">
+                Mes rendez‑vous <span className="arrow">→</span>
+              </Link>
+            </div>
+          </div>
+        )}
 
       </div>
 
