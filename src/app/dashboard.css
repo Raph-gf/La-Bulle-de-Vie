@@ -869,3 +869,48 @@ body.dash .bulles{display:none}
 .card-toggle .sw-wrap.on{background:var(--terra)}
 .card-toggle .sw-wrap::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 4px #00000030; transition:transform .2s}
 .card-toggle .sw-wrap.on::after{transform:translateX(16px)}
+
+/* ── Image uploader ─────────────────────────────────────────── */
+.img-uploader{display:flex; flex-direction:column; gap:10px}
+
+.img-preview{
+  position:relative; width:100%; height:180px;
+  border-radius:10px; overflow:hidden;
+  border:1px solid var(--line);
+  background:var(--cream);
+}
+.img-preview img{width:100%; height:100%; object-fit:cover; display:block}
+
+.img-remove{
+  position:absolute; top:8px; right:8px;
+  width:28px; height:28px; border-radius:50%;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
+  color:#fff; border:none; cursor:pointer;
+  font-size:18px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  transition: background .2s;
+}
+.img-remove:hover{background:var(--terra)}
+
+.img-choose-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; padding:12px 16px;
+  border:2px dashed var(--line); border-radius:10px;
+  background:transparent; cursor:pointer;
+  font-family:var(--sans); font-size:13.5px; color:var(--mute);
+  transition: all .22s;
+}
+.img-choose-btn:hover:not(:disabled){
+  border-color:var(--terra); color:var(--terra); background:#FDF5EE;
+}
+.img-choose-btn:disabled{opacity:.6; cursor:not-allowed}
+.img-choose-btn .img-plus{font-size:16px}
+
+.img-spinner{
+  display:inline-block; width:14px; height:14px;
+  border:2px solid var(--line); border-top-color:var(--terra);
+  border-radius:50%; animation: spin .7s linear infinite; flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.img-hint{font-size:11.5px; color:var(--mute); letter-spacing:.04em; text-align:center}

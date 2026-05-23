@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {
   useServices, useCreateService, useUpdateService,
@@ -128,6 +128,55 @@ function BenefitsEditor({ value, onChange }: { value: Benefit[]; onChange: (v: B
           <span>+</span> Ajouter un bénéfice
         </button>
       )}
+    </div>
+  )
+}
+
+// ── Image uploader ────────────────────────────────────────────────────
+function ImageUploader({ value, onChange }: { value: string | null; onChange: (url: string | null) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/dashboard/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? "Erreur upload"); return }
+      onChange(data.url)
+      toast.success("Image uploadée.")
+    } catch {
+      toast.error("Erreur lors de l'upload.")
+    } finally {
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ""
+    }
+  }
+
+  return (
+    <div className="img-uploader">
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+        style={{ display: "none" }} onChange={handleFile} />
+      {value && (
+        <div className="img-preview">
+          <img src={value} alt="Aperçu" />
+          <button className="img-remove" type="button" onClick={() => onChange(null)} title="Supprimer l'image">×</button>
+        </div>
+      )}
+      <button className="img-choose-btn" type="button" onClick={() => inputRef.current?.click()} disabled={uploading}>
+        {uploading ? (
+          <><span className="img-spinner" /> Envoi en cours…</>
+        ) : value ? (
+          "Remplacer l'image"
+        ) : (
+          <><span className="img-plus">↑</span> Choisir une image depuis votre PC</>
+        )}
+      </button>
+      <span className="img-hint">JPEG · PNG · WebP · GIF — max 5 Mo</span>
     </div>
   )
 }
@@ -371,9 +420,9 @@ function ServiceModal({
                 </div>
                 {errors.bgColor && <span className="so-error">{errors.bgColor}</span>}
               </div>
-              <div className="so-field">
-                <label className="so-label">URL image <span className="hint">optionnel</span></label>
-                <input className="so-input" value={form.imageUrl ?? ""} onChange={e => set("imageUrl", e.target.value || null)} placeholder="https://..." />
+              <div className="so-field full">
+                <label className="so-label">Image <span className="hint">optionnel</span></label>
+                <ImageUploader value={form.imageUrl} onChange={url => set("imageUrl", url)} />
               </div>
             </div>
           </div>
