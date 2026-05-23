@@ -24,7 +24,7 @@ export async function GET() {
         id: true,
         status: true,
         amountPaid: true,
-        review: { select: { id: true, stars: true, approved: true } },
+        review: { select: { id: true, stars: true, approved: true, specialistReply: true } },
         service: { select: { name: true, durationMinutes: true } },
         slot: { select: { date: true, startTime: true } },
       },

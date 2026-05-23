@@ -22,7 +22,7 @@ type HistAppt = {
   id: string
   status: string
   amountPaid: number
-  review: { id: string; stars: number; approved: boolean } | null
+  review: { id: string; stars: number; approved: boolean; specialistReply: string | null } | null
   service: { name: string; durationMinutes: number }
   slot: { date: string; startTime: string }
 }
@@ -806,6 +806,21 @@ export default function ComptePage() {
                                     }}>
                                       En attente de validation
                                     </span>
+                                  )}
+                                  {appt.review.specialistReply && (
+                                    <div style={{
+                                      marginTop: 4, padding: "10px 14px",
+                                      background: "var(--cream)", borderRadius: 10,
+                                      borderLeft: "3px solid var(--terra)",
+                                      maxWidth: 260, textAlign: "left",
+                                    }}>
+                                      <div style={{ fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--terra)", marginBottom: 5, fontWeight: 600 }}>
+                                        Réponse de Laurence
+                                      </div>
+                                      <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5, margin: 0, fontFamily: "var(--serif)", fontStyle: "italic" }}>
+                                        &ldquo;{appt.review.specialistReply}&rdquo;
+                                      </p>
+                                    </div>
                                   )}
                                 </div>
                               ) : canReview ? (
