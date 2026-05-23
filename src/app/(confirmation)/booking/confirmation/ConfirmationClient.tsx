@@ -400,6 +400,9 @@ export default function ConfirmationClient() {
                 Créer mon compte <span className="arrow">→</span>
               </Link>
             )}
+            <Link href="/" className="btn">
+              Retour à l&apos;accueil
+            </Link>
             <button className="btn" onClick={() => window.print()}>
               Imprimer la confirmation
             </button>

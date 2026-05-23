@@ -700,10 +700,10 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
 
 /* ── Steps (déroulé) ─────────────────────────────────────────── */
 .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:40px; margin-top:48px}
-.step{padding:32px; background:var(--cream); border-radius:16px}
-.step-num{font-family:var(--serif); font-size:48px; font-style:italic; color:var(--terra); opacity:.5; margin-bottom:12px}
-.step h3{font-family:var(--serif); font-size:22px; margin-bottom:10px}
-.step p{font-size:14px; color:var(--mute); line-height:1.7}
+.dstep{padding:32px; background:var(--cream); border-radius:16px}
+.dstep-num{font-family:var(--serif); font-size:48px; font-style:italic; color:var(--terra); opacity:.5; margin-bottom:12px}
+.dstep h3{font-family:var(--serif); font-size:22px; margin-bottom:10px}
+.dstep p{font-size:14px; color:var(--mute); line-height:1.7}
 @media(max-width:768px){.steps{grid-template-columns:1fr}}
 
 /* ── Deroulement section ─────────────────────────────────────── */

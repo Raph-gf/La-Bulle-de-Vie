@@ -99,8 +99,8 @@ export default function PrestationsClient({ services }: { services: PublicServic
           </Reveal>
           <div className="steps">
             {steps.map((s, i) => (
-              <Reveal key={s.num} delay={i * 0.1} className="step">
-                <div className="step-num">{s.num}</div>
+              <Reveal key={s.num} delay={i * 0.1} className="dstep">
+                <div className="dstep-num">{s.num}</div>
                 <h3>{s.title}</h3>
                 <p>{s.body}</p>
               </Reveal>
