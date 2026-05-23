@@ -86,6 +86,9 @@ model Profile {
   /// Specialist only — weekly availability schedule (JSON)
   /// Shape: { mon/tue/wed/thu/fri/sat: { enabled: boolean, start: "09:00", end: "18:00" }, slotDurationMin: number, lunchStart?: string, lunchEnd?: string }
   weeklySchedule         Json?
+  /// Specialist only — Google Calendar OAuth token bundle
+  /// Shape: { access_token, refresh_token, expiry_date, scope }
+  googleCalendarToken    Json?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

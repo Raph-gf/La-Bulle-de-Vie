@@ -422,7 +422,15 @@
 - ✅ **Bug fix** — `/soins/[id]` fetch guard (2026-05-23)
   - Added `r.ok` check + `.catch()` handler so non-JSON / empty-body API errors show "not found" instead of crashing with "Unexpected end of JSON input"
   - Root cause: stale Prisma client in dev server after schema change — restart dev server after `prisma generate`
-- ⬜ Boutique page — product table + orders tab + stock warnings
+- ✅ **Boutique page** (`/dashboard/boutique`) — (2026-05-23)
+  - `GET /api/dashboard/boutique` — products + last 50 orders + KPIs (totalRevenue, totalOrders, pendingOrders, lowStockCount)
+  - `POST /api/dashboard/boutique` — create product (Zod validated, price euros→cents)
+  - `PATCH/DELETE /api/dashboard/boutique/[id]` — partial update (incl. publish toggle), soft-delete guard (P2003→409)
+  - `PATCH /api/dashboard/boutique/orders/[id]` — update order status
+  - TanStack Query hooks: `useBoutique`, `useCreateProduct`, `useUpdateProduct`, `useDeleteProduct`, `useUpdateOrderStatus`
+  - Products tab: thumbnail, stock color (green/>3, amber/1-3, red/0), publish toggle, edit/delete
+  - Orders tab: status pills, inline status dropdown
+  - ProductModal slide-over with image upload (→ `/api/dashboard/upload`)
 - ✅ **Notifications page** (`/dashboard/notifications`) — (2026-05-23)
   - `GET /api/dashboard/notifications` — merges saved prefs with `DEFAULT_NOTIF_PREFS` so new keys always have a default
   - `PATCH /api/dashboard/notifications` — Zod validates 6 boolean fields
@@ -430,8 +438,22 @@
   - Optimistic UI update + revert on failure
   - `SettingRow` component with custom CSS toggle switch + optional "Bientôt" badge
   - Sidebar nav item added to Réglages section
-- ⬜ `POST /api/dashboard/appointments/:id/confirm` — confirm appointment + invalidate query cache
-- ⬜ Google Calendar OAuth integration — real two-way sync
+- ✅ **Confirm appointment** — `POST /api/dashboard/appointments/:id/confirm` (2026-05-23)
+  - Specialist-only guard, status state-machine (pending→confirmed, 409 if already confirmed, 400 if cancelled)
+  - Auto-creates Google Calendar event (fire-and-forget) if specialist has connected their account
+  - `useConfirmAppointment()` mutation hook auto-invalidates appointments cache on success
+  - Detail drawer shows "Confirmer" button for pending, green "Confirmé" badge for confirmed
+- ✅ **Google Calendar OAuth integration** (2026-05-23)
+  - `Profile.googleCalendarToken Json?` field added to schema + pushed to Supabase
+  - `googleapis` package installed
+  - `src/lib/google-calendar/index.ts` — `getOAuthClient`, `getAuthUrl`, `exchangeCode`, `createCalendarEvent`, `isGCalConfigured`
+  - `GET /api/auth/google-calendar` — redirects specialist to Google OAuth consent screen
+  - `GET /api/auth/google-calendar/callback` — exchanges code, stores token in profile, redirects with `?gcal=connected`
+  - `GET /api/auth/google-calendar/status` — returns `{ connected, configured }`
+  - `POST /api/auth/google-calendar/disconnect` — clears token (uses `Prisma.DbNull`)
+  - Agenda banner: live connection status badge, "Connecter" link (if `GOOGLE_CLIENT_ID` set), "Déconnecter" button
+  - `?gcal=connected/denied/error` params on redirect → sonner toast + URL cleaned up
+  - **Setup required**: Google Cloud project → enable Calendar API → OAuth credentials → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` in `.env.local`
 - ✅ Revenue chart — real SVG bars from Stripe/DB data (see Finances page above)
 
 ---
@@ -492,10 +514,10 @@
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 6 — Specialist Dashboard
+## Current phase: Phase 7 — E-commerce
 ## Last session: 2026-05-23
-## Next step: Password reset form (`/login?mode=reset`) → wire `/compte` data → Boutique page → E-commerce
-## Also done this session: Clients page, Finances page + SVG revenue chart, Notifications page + auto-save, notification prefs wired to Stripe webhook + review API, Profile DB trigger (002_profile_trigger.sql), POST /api/reviews
+## Phase 6 complete ✅ — All dashboard pages built and wired. Google Calendar OAuth integrated.
+## Next step: Wire /decorations catalog to real Prisma products → Zustand cart → /panier page → Stripe checkout for cart → order confirmation email
 
 ---
 

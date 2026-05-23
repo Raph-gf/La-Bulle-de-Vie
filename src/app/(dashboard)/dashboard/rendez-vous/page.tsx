@@ -1,6 +1,8 @@
 "use client"
-import { useState, Fragment, type ReactNode } from "react"
+import { useState, Fragment, type ReactNode, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useWeekAppointments, useAppointments, useConfirmAppointment, type Appt } from "@/lib/queries/appointments"
 import { toast } from "sonner"
 
@@ -47,7 +49,38 @@ export default function RendezVousPage() {
   const [view, setView] = useState<"semaine" | "liste">("semaine")
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(new Date()))
   const [selected, setSelected] = useState<Appt | null>(null)
-  const gcalConnected = false // placeholder — will be wired to Google OAuth
+  const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
+
+  // Google Calendar connection status
+  const gcalQuery = useQuery<{ connected: boolean; configured: boolean }>({
+    queryKey: ["gcal-status"],
+    queryFn: () => fetch("/api/auth/google-calendar/status").then(r => r.json()),
+    staleTime: 60_000,
+  })
+  const gcalConnected = gcalQuery.data?.connected ?? false
+  const gcalConfigured = gcalQuery.data?.configured ?? false
+
+  // Show toast based on OAuth callback result
+  useEffect(() => {
+    const result = searchParams.get("gcal")
+    if (result === "connected") toast.success("Google Agenda connecté avec succès.")
+    else if (result === "denied") toast.warning("Connexion Google Agenda annulée.")
+    else if (result === "error") toast.error("Erreur lors de la connexion à Google Agenda.")
+    if (result) {
+      queryClient.invalidateQueries({ queryKey: ["gcal-status"] })
+      // Clean up the URL param without a full page reload
+      const url = new URL(window.location.href)
+      url.searchParams.delete("gcal")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [searchParams, queryClient])
+
+  async function handleGcalDisconnect() {
+    await fetch("/api/auth/google-calendar/disconnect", { method: "POST" })
+    queryClient.invalidateQueries({ queryKey: ["gcal-status"] })
+    toast.success("Google Agenda déconnecté.")
+  }
 
   // TanStack Query — automatic caching, background refetch, no manual loading state
   const weekEnd = toISO(addDays(weekStart, 7))
@@ -115,21 +148,45 @@ export default function RendezVousPage() {
         </div>
 
         {/* Google Calendar connection banner */}
-        {!gcalConnected && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 14,
-            padding: "11px 22px", borderBottom: "1px solid var(--line)",
-            background: "#FDFAF5", fontSize: 13.5,
-          }}>
-            <GoogleCalIcon />
-            <span style={{ flex: 1, color: "var(--mute)" }}>
-              <strong style={{ color: "var(--ink)" }}>Google Agenda</strong> — Connectez votre calendrier pour synchroniser automatiquement vos rendez-vous.
-            </span>
-            <button className="tbtn ghost" style={{ fontSize: 12, padding: "7px 14px", whiteSpace: "nowrap" }}>
-              Connecter Google Agenda
-            </button>
-          </div>
-        )}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 14,
+          padding: "11px 22px", borderBottom: "1px solid var(--line)",
+          background: gcalConnected ? "#F0FDF4" : "#FDFAF5", fontSize: 13.5,
+          transition: "background .3s",
+        }}>
+          <GoogleCalIcon />
+          {gcalConnected ? (
+            <>
+              <span style={{ flex: 1 }}>
+                <strong style={{ color: "var(--ink)" }}>Google Agenda</strong>
+                <span style={{ color: "#16a34a", marginLeft: 8, fontSize: 12.5, fontWeight: 500 }}>● Connecté</span>
+                <span style={{ color: "var(--mute)", marginLeft: 8 }}>— Les rendez-vous confirmés sont ajoutés automatiquement à votre calendrier.</span>
+              </span>
+              <button
+                className="tbtn ghost"
+                style={{ fontSize: 12, padding: "7px 14px", whiteSpace: "nowrap", color: "var(--mute)" }}
+                onClick={handleGcalDisconnect}
+              >
+                Déconnecter
+              </button>
+            </>
+          ) : (
+            <>
+              <span style={{ flex: 1, color: "var(--mute)" }}>
+                <strong style={{ color: "var(--ink)" }}>Google Agenda</strong> — Connectez votre calendrier pour synchroniser automatiquement vos rendez-vous confirmés.
+              </span>
+              {gcalConfigured ? (
+                <Link href="/api/auth/google-calendar" className="tbtn ghost" style={{ fontSize: 12, padding: "7px 14px", whiteSpace: "nowrap", textDecoration: "none" }}>
+                  Connecter Google Agenda
+                </Link>
+              ) : (
+                <span style={{ fontSize: 12, color: "var(--mute)", fontStyle: "italic" }}>
+                  (GOOGLE_CLIENT_ID requis)
+                </span>
+              )}
+            </>
+          )}
+        </div>
 
         {/* ── WEEK VIEW ─────────────────────────────────────────── */}
         {view === "semaine" && (
