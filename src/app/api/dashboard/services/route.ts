@@ -32,7 +32,7 @@ const serviceSchema = z.object({
   price: z.number().int().min(100),
   category: z.enum(["massage", "energetique", "creation"]),
   isPublished: z.boolean().optional(),
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrls: z.array(z.string().url()).max(3).optional(),
   vatRate: z.number().int().min(0).max(100).optional(),
 })
 
@@ -67,6 +67,7 @@ export async function POST(req: Request) {
       ...restData,
       benefits: benefits === null || benefits === undefined ? Prisma.JsonNull : benefits,
       relatedSlugs: parsed.data.relatedSlugs ?? [],
+      imageUrls: parsed.data.imageUrls ?? [],
       isPublished: parsed.data.isPublished ?? false,
       vatRate: parsed.data.vatRate ?? 0,
       displayOrder: parsed.data.displayOrder ?? 0,

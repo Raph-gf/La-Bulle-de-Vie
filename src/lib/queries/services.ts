@@ -24,7 +24,7 @@ export interface Service {
   price: number
   category: "massage" | "energetique" | "creation"
   isPublished: boolean
-  imageUrl: string | null
+  imageUrls: string[]
   vatRate: number
   createdAt: string
   updatedAt: string

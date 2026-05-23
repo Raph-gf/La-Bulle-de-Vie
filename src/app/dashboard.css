@@ -870,7 +870,13 @@ body.dash .bulles{display:none}
 .card-toggle .sw-wrap::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 4px #00000030; transition:transform .2s}
 .card-toggle .sw-wrap.on::after{transform:translateX(16px)}
 
-/* ── Image uploader ─────────────────────────────────────────── */
+/* ── Multi-image uploader ───────────────────────────────────── */
+.multi-img-uploader{display:flex; flex-direction:column; gap:12px}
+
+.img-slot{display:flex; flex-direction:column; gap:6px}
+.img-slot-label{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute)}
+
+/* ── Image uploader (shared pieces) ────────────────────────── */
 .img-uploader{display:flex; flex-direction:column; gap:10px}
 
 .img-preview{

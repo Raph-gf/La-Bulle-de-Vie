@@ -26,7 +26,7 @@ const EMPTY_FORM: ServiceInput = {
   benefits: [], relatedSlugs: [], bgColor: "#2C1F14",
   displayOrder: 0, description: "", durationMinutes: 60,
   price: 10000, category: "massage", isPublished: false,
-  imageUrl: null, vatRate: 0,
+  imageUrls: [], vatRate: 0,
 }
 
 // ── Service card ──────────────────────────────────────────────────────
@@ -59,8 +59,8 @@ function ServiceCard({
     <div className="mgr-card">
       <div className="color-band" style={{ background: service.bgColor ?? "#2C1F14" }} />
       <div className="pic-placeholder">
-        {service.imageUrl
-          ? <img src={service.imageUrl} alt={service.name} />
+        {service.imageUrls[0]
+          ? <img src={service.imageUrls[0]} alt={service.name} />
           : <div className="no-img"><span style={{ fontSize: 28, opacity: .35 }}>✦</span><span>{service.tagline ?? service.name}</span></div>
         }
         <span className={`pill-tag ${service.isPublished ? "published" : "draft"}`}>
@@ -132,51 +132,77 @@ function BenefitsEditor({ value, onChange }: { value: Benefit[]; onChange: (v: B
   )
 }
 
-// ── Image uploader ────────────────────────────────────────────────────
-function ImageUploader({ value, onChange }: { value: string | null; onChange: (url: string | null) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+// ── Multi-image uploader (up to 3 slots) ─────────────────────────────
+const IMG_LABELS = ["Image principale", "Image secondaire 1", "Image secondaire 2"]
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
+function ImageSlot({ url, label, uploading, onUpload, onRemove }: {
+  url: string | undefined
+  label: string
+  uploading: boolean
+  onUpload: (file: File) => void
+  onRemove: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <div className="img-slot">
+      <span className="img-slot-label">{label}</span>
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+        style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = "" }} />
+      {url ? (
+        <div className="img-preview">
+          <img src={url} alt={label} />
+          <button className="img-remove" type="button" onClick={onRemove} title="Supprimer">×</button>
+        </div>
+      ) : (
+        <button className="img-choose-btn" type="button" onClick={() => inputRef.current?.click()} disabled={uploading}>
+          {uploading ? <><span className="img-spinner" /> Envoi…</> : <><span className="img-plus">↑</span> Choisir</>}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function MultiImageUploader({ value, onChange }: { value: string[]; onChange: (urls: string[]) => void }) {
+  const [uploading, setUploading] = useState<number | null>(null)
+
+  async function handleUpload(index: number, file: File) {
+    setUploading(index)
     try {
       const fd = new FormData()
       fd.append("file", file)
       const res = await fetch("/api/dashboard/upload", { method: "POST", body: fd })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? "Erreur upload"); return }
-      onChange(data.url)
+      const next = [...value]
+      next[index] = data.url
+      onChange(next)
       toast.success("Image uploadée.")
     } catch {
       toast.error("Erreur lors de l'upload.")
     } finally {
-      setUploading(false)
-      if (inputRef.current) inputRef.current.value = ""
+      setUploading(null)
     }
   }
 
+  function handleRemove(index: number) {
+    const next = [...value]
+    next.splice(index, 1)
+    onChange(next)
+  }
+
   return (
-    <div className="img-uploader">
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-        style={{ display: "none" }} onChange={handleFile} />
-      {value && (
-        <div className="img-preview">
-          <img src={value} alt="Aperçu" />
-          <button className="img-remove" type="button" onClick={() => onChange(null)} title="Supprimer l'image">×</button>
-        </div>
-      )}
-      <button className="img-choose-btn" type="button" onClick={() => inputRef.current?.click()} disabled={uploading}>
-        {uploading ? (
-          <><span className="img-spinner" /> Envoi en cours…</>
-        ) : value ? (
-          "Remplacer l'image"
-        ) : (
-          <><span className="img-plus">↑</span> Choisir une image depuis votre PC</>
-        )}
-      </button>
-      <span className="img-hint">JPEG · PNG · WebP · GIF — max 5 Mo</span>
+    <div className="multi-img-uploader">
+      {IMG_LABELS.map((label, i) => (
+        <ImageSlot
+          key={i}
+          url={value[i]}
+          label={label}
+          uploading={uploading === i}
+          onUpload={file => handleUpload(i, file)}
+          onRemove={() => handleRemove(i)}
+        />
+      ))}
+      <span className="img-hint">JPEG · PNG · WebP · GIF — max 5 Mo · 3 images max</span>
     </div>
   )
 }
@@ -205,7 +231,7 @@ function ServiceModal({
       displayOrder: service.displayOrder, description: service.description,
       durationMinutes: service.durationMinutes, price: service.price / 100,
       category: service.category, isPublished: service.isPublished,
-      imageUrl: service.imageUrl, vatRate: service.vatRate,
+      imageUrls: service.imageUrls, vatRate: service.vatRate,
     } : { ...EMPTY_FORM }
   )
   const [slugManual, setSlugManual] = useState(isEdit)
@@ -249,7 +275,6 @@ function ServiceModal({
         ritualCore: form.ritualCore || null,
         ritualCoreDuration: form.ritualCoreDuration || null,
         bgColor: form.bgColor || null,
-        imageUrl: form.imageUrl || null,
       }
       if (isEdit) {
         await update.mutateAsync({ id: service!.id, data: payload })
@@ -421,8 +446,8 @@ function ServiceModal({
                 {errors.bgColor && <span className="so-error">{errors.bgColor}</span>}
               </div>
               <div className="so-field full">
-                <label className="so-label">Image <span className="hint">optionnel</span></label>
-                <ImageUploader value={form.imageUrl} onChange={url => set("imageUrl", url)} />
+                <label className="so-label">Images <span className="hint">1 grande + 2 petites — optionnel</span></label>
+                <MultiImageUploader value={form.imageUrls} onChange={urls => set("imageUrls", urls)} />
               </div>
             </div>
           </div>

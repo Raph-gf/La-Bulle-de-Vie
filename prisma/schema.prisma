@@ -128,7 +128,7 @@ model Service {
   price           Int
   category        ServiceCategory
   isPublished     Boolean         @default(true)
-  imageUrl        String?
+  imageUrls       String[]
   /// VAT rate as integer percentage — 0 for TVA-exempt (most massage/bien-être), 20 for standard
   vatRate         Int             @default(0)
   createdAt       DateTime        @default(now())

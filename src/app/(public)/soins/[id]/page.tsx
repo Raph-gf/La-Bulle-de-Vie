@@ -28,7 +28,7 @@ interface ServiceData {
   forWho: string | null; shortDescription: string | null; longDescription: string | null
   ritualCore: string | null; ritualCoreDuration: string | null
   benefits: Benefit[] | null; relatedSlugs: string[]
-  bgColor: string | null; durationMinutes: number; price: number; category: string
+  bgColor: string | null; imageUrls: string[]; durationMinutes: number; price: number; category: string
   reviews: DbReview[]
   _count: { reviews: number }
 }
@@ -259,9 +259,11 @@ export default function SoinPage() {
               {/* Gallery */}
               <Reveal>
                 <div className="soin-gallery">
-                  <div className="g" style={{ background: service.bgColor ?? "#2C1F14" }} />
-                  <div className="g" style={{ background: "#3D2B1A" }} />
-                  <div className="g" style={{ background: "#4A3530" }} />
+                  {[0, 1, 2].map(i => (
+                    service.imageUrls[i]
+                      ? <div key={i} className="g"><img src={service.imageUrls[i]} alt={`${service.name} ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
+                      : <div key={i} className="g" style={{ background: i === 0 ? (service.bgColor ?? "#2C1F14") : i === 1 ? "#3D2B1A" : "#4A3530" }} />
+                  ))}
                 </div>
               </Reveal>
 

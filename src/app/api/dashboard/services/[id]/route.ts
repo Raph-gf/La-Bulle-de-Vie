@@ -29,7 +29,7 @@ const updateSchema = z.object({
   price: z.number().int().min(100).optional(),
   category: z.enum(["massage", "energetique", "creation"]).optional(),
   isPublished: z.boolean().optional(),
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrls: z.array(z.string().url()).max(3).optional(),
   vatRate: z.number().int().min(0).max(100).optional(),
 })
 
