@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
 import { sendBookingConfirmation, sendSpecialistNotification } from "@/lib/resend/emails"
+import { createCalendarEvent, type GCalToken } from "@/lib/google-calendar"
 
 // POST /api/booking/confirm
 // Called client-side after stripe.confirmPayment() succeeds.
@@ -101,10 +102,14 @@ export async function POST(req: NextRequest) {
       metadata: { ...pi.metadata, appointmentId: appointment.id },
     }).catch(() => {})
 
-    // Send emails (non-blocking — never fail the response over email issues)
-    const [service, slot] = await Promise.all([
-      prisma.service.findUnique({ where: { id: serviceId }, select: { name: true } }),
+    // Fetch service, slot and specialist profile in parallel
+    const [service, slot, specialist] = await Promise.all([
+      prisma.service.findUnique({ where: { id: serviceId }, select: { name: true, durationMinutes: true } }),
       prisma.availabilitySlot.findUnique({ where: { id: slotId }, select: { date: true, startTime: true } }),
+      prisma.profile.findFirst({
+        where: { role: "specialist" },
+        select: { notificationPrefs: true, googleCalendarToken: true },
+      }),
     ])
 
     if (service && slot) {
@@ -123,15 +128,13 @@ export async function POST(req: NextRequest) {
         amountEur, ref,
       }
 
+      // Client confirmation email (non-blocking)
       sendBookingConfirmation(clientEmail, baseData)
         .catch(err => console.error("[email] confirmation failed:", err))
 
+      // Specialist notification email (non-blocking)
       const specialistEmail = process.env.SPECIALIST_EMAIL
       if (specialistEmail) {
-        const specialist = await prisma.profile.findFirst({
-          where: { role: "specialist" },
-          select: { notificationPrefs: true },
-        })
         const notifPrefs = (specialist?.notificationPrefs as Record<string, boolean> | null) ?? {}
         if (notifPrefs.onNewBooking !== false) {
           sendSpecialistNotification(specialistEmail, {
@@ -142,6 +145,26 @@ export async function POST(req: NextRequest) {
             isFirstVisit: isFirstVisit === "true",
           }).catch(err => console.error("[email] specialist notification failed:", err))
         }
+      }
+
+      // Google Calendar event (non-blocking)
+      if (specialist?.googleCalendarToken) {
+        const dateStr = new Date(slot.date).toISOString().split("T")[0]
+        const [startH, startM] = slot.startTime.split(":").map(Number)
+        const totalMin = startH * 60 + startM + service.durationMinutes
+        const endH = String(Math.floor(totalMin / 60)).padStart(2, "0")
+        const endM = String(totalMin % 60).padStart(2, "0")
+        const locationLabel = location === "domicile"
+          ? (clientAddress || "À domicile")
+          : "Au cabinet"
+
+        createCalendarEvent(specialist.googleCalendarToken as GCalToken, {
+          summary: `${service.name} — ${clientName}`,
+          description: notes || undefined,
+          location: locationLabel,
+          start: `${dateStr}T${slot.startTime}:00`,
+          end: `${dateStr}T${endH}:${endM}:00`,
+        }).catch(err => console.error("[gcal] event creation failed:", err))
       }
     }
 
