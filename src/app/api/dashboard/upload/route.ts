@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { supabaseAdmin } from "@/lib/supabase/admin"
 import { prisma } from "@/lib/prisma"
 
 const MAX_BYTES = 5 * 1024 * 1024
@@ -43,19 +44,18 @@ export async function POST(req: Request) {
   const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase()
   const path = `services/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-  const supabase = await createClient()
   const buffer = new Uint8Array(await file.arrayBuffer())
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabaseAdmin.storage
     .from("service-images")
     .upload(path, buffer, { contentType: file.type, upsert: false })
 
   if (uploadError) {
     console.error("[upload] Supabase error:", uploadError.message)
-    return NextResponse.json({ error: "Erreur lors de l'upload. Vérifiez que le bucket existe." }, { status: 500 })
+    return NextResponse.json({ error: "Erreur lors de l'upload : " + uploadError.message }, { status: 500 })
   }
 
-  const { data: { publicUrl } } = supabase.storage.from("service-images").getPublicUrl(path)
+  const { data: { publicUrl } } = supabaseAdmin.storage.from("service-images").getPublicUrl(path)
 
   return NextResponse.json({ url: publicUrl })
 }
