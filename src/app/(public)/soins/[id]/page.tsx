@@ -111,9 +111,11 @@ export default function SoinPage() {
     fetch(`/api/services/${id}`)
       .then(r => {
         if (r.status === 404) { setNotFound(true); return null }
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
       })
       .then(json => { if (json) setData(json) })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
   }, [id])
 
