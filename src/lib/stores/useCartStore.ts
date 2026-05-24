@@ -41,10 +41,9 @@ export const useCartStore = create<CartStore>()(
                   ? { ...i, quantity: Math.min(i.quantity + 1, i.stock) }
                   : i
               ),
-              isOpen: true,
             }
           }
-          return { items: [...state.items, { ...product, quantity: 1 }], isOpen: true }
+          return { items: [...state.items, { ...product, quantity: 1 }] }
         })
       },
 

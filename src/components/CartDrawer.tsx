@@ -1,14 +1,46 @@
 "use client"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useCartStore } from "@/lib/stores/useCartStore"
 
 export default function CartDrawer() {
-  const { items, isOpen, close, remove, updateQty, total, count } = useCartStore()
+  const { items, isOpen, close, open, remove, updateQty, total, count } = useCartStore()
   const n = count()
+  const [bump, setBump] = useState(false)
+  const prevN = useRef(n)
+
+  // Trigger badge bump animation whenever the count increases
+  useEffect(() => {
+    if (n > prevN.current) {
+      setBump(true)
+      const t = setTimeout(() => setBump(false), 500)
+      return () => clearTimeout(t)
+    }
+    prevN.current = n
+  }, [n])
+
+  const pillVisible = n > 0 && !isOpen
 
   return (
     <>
+      {/* Floating cart pill — bottom right, slides up when items > 0 */}
+      <button
+        className={`cart-pill${pillVisible ? " show" : ""}`}
+        onClick={open}
+        aria-label="Ouvrir le panier"
+      >
+        <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        Panier
+        <span className={`n${bump ? " bump" : ""}`}>{n}</span>
+      </button>
+
+      {/* Backdrop */}
       <div className={`cart-backdrop${isOpen ? " show" : ""}`} onClick={close} aria-hidden />
+
+      {/* Slide-in drawer */}
       <aside className={`cart-drawer${isOpen ? " open" : ""}`} aria-label="Panier">
         {/* Header */}
         <div className="cd-head">
