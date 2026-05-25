@@ -192,9 +192,9 @@
   - Bug fixed: bubble effects now depend on `[status]` — refs were null during loading state
 
 ### Cancellation & refunds
-- ⬜ Client can cancel from `/compte#appts` → trigger Stripe refund based on cancellation policy
+- ✅ Client can cancel from `/compte#appts` → `POST /api/booking/cancel` → Stripe refund based on policy
 - ⬜ Refund webhook → update appointment `refundStatus` in DB
-- ⬜ Slot freed on cancellation (`isBooked: false`)
+- ✅ Slot freed on cancellation (`isBooked: false`) — atomic transaction
 
 ### Travel distance pricing
 - ✅ Schema ready — `Profile.travelPricing` (JSON), `Profile.cabinetAddress/Lat/Lng`, `Appointment.clientAddress`, `Appointment.travelFee`
@@ -298,7 +298,7 @@
   - Creates review with `approved: false`
   - Checks `notificationPrefs.onNewReview !== false` before firing `sendNewReviewNotification`
 - ⬜ **Resend account + API key needed** — set `RESEND_API_KEY` in `.env.local` to activate
-- ⬜ **24h reminder cron** — `GET /api/cron/reminders` secured with `CRON_SECRET`, runs daily at 08:00 via Vercel Cron (`vercel.json`), queries confirmed appointments where `slot.date = tomorrow`, checks `prefs.clientReminder24h`, calls `sendAppointmentReminder` per client. Add `CRON_SECRET` to env + Vercel dashboard.
+- ✅ **24h reminder cron** — `GET /api/cron/reminders` secured with `CRON_SECRET`, runs daily at 08:00 via `vercel.json`, queries confirmed appointments for tomorrow, resolves emails via Supabase Admin.
 - ✅ Contact form (`/contact`) — full page built from Figma + wired to Resend
   - Split layout: dark gradient panel left, content right
   - Info column: hours, phone, email, social links (Instagram, X, Facebook)
@@ -627,29 +627,29 @@ Full audit documented in `security.md`. Three passes: manual analysis + security
 
 ### Up next — Phase 8 priorities (session 2026-05-26)
 
-#### 1. Password reset ⬜ (blocking — users with email/password have no recovery path)
-- `/login?mode=reset` already shows a "new password" form — wire it to `supabase.auth.updateUser({ password })`
-- The reset link from `resetPasswordForEmail` lands on `/auth/callback?next=/login?mode=reset` — route already handles the code exchange
+#### 1. Password reset ✅ (already wired in previous session)
+- `/login?mode=reset` → `supabase.auth.updateUser({ password })` → redirect `/compte`
+- Reset email → `/auth/callback?next=/login?mode=reset` → code exchange → session → reset form
 
-#### 2. `/compte` data wiring ⬜ (core feature — account space is currently dead)
-- **Mon espace** — real next appointment + countdown target from DB
-- **Rendez-vous** — live appointments from `GET /api/user/appointments`
-- **Historique** — past appointments with review submission form (`POST /api/reviews`)
-- **Profil & sécurité** — save changes to `profiles` table (name, phone) + `supabase.auth.updateUser` for email/password
-- **Stats** — total séances, avg rating, loyalty bar from real appointment count
+#### 2. `/compte` data wiring ✅ (all views live with real DB data)
+- **Mon espace** — real next appointment + countdown from `GET /api/user/stats`
+- **Rendez-vous** — live from `GET /api/user/appointments`
+- **Historique** — past appointments + review modal from `GET /api/user/history` + `POST /api/reviews`
+- **Profil & sécurité** — save via `PATCH /api/user/profile` + sync Supabase Auth metadata
+- **Stats** — total séances, top service, reviews count, loyalty bar — all live
 
-#### 3. Cancellation / refund flow ⬜ (blocking — clients have no way to cancel)
-- Client cancels from `/compte#appts` → `POST /api/booking/cancel`
-- Cancellation policy: full refund >48h, 50% refund 24–48h, no refund <24h
-- Stripe `refunds.create()` + update `appointment.refundStatus`
-- Slot freed (`isBooked: false`) on cancellation
-- Email confirmation to client
+#### 3. Cancellation / refund flow ✅ (session 2026-05-26)
+- `POST /api/booking/cancel` — verifies ownership, applies policy, Stripe refund, frees slot
+- Cancellation policy: full refund >24h, 50% refund 4–24h, no refund <4h (button hidden in UI)
+- Atomic Prisma transaction: cancel appointment + `isBooked: false` on slot
+- `sendCancellationConfirmation` email with policy-aware refund message
+- Cancel button in `/compte#appts` now calls the API with real error handling
 
-#### 4. 24h appointment reminder cron ⬜
-- `GET /api/cron/reminders` — already has the email function (`sendAppointmentReminder`)
-- Secure with `CRON_SECRET` header check
-- `vercel.json` cron schedule: daily at 08:00
-- Query: `slot.date = tomorrow AND status = confirmed AND prefs.clientReminder24h = true`
+#### 4. 24h appointment reminder cron ✅ (session 2026-05-26)
+- `GET /api/cron/reminders` — secured with `CRON_SECRET` Bearer header
+- `vercel.json` cron: daily at 08:00 UTC (`0 8 * * *`)
+- Queries confirmed appointments for tomorrow, resolves client emails via Supabase Admin
+- `CRON_SECRET` added to `.env.local` — **must also set in Vercel dashboard env vars**
 
 #### 5. Security — remaining pre-deploy items ⬜
 - **H6** — Google Calendar OAuth: generate `state` UUID, store in short-lived cookie, verify on callback (~30 min)
@@ -679,7 +679,7 @@ Full audit documented in `security.md`. Three passes: manual analysis + security
 
 ---
 
-## Phase 10 — Async messaging (post-deploy, Pro tier feature)
+## Phase 10 — Product backlog (post-deploy features)
 
 **Idea:** client ↔ specialist messaging system — clients can ask pre-booking questions, specialist can follow up after sessions.
 
@@ -696,6 +696,67 @@ Full audit documented in `security.md`. Three passes: manual analysis + security
 - GDPR note: message data = personal data — need retention policy + delete-on-account-delete cascade
 
 **Why defer:** core booking flow (cancellations, account wiring, reminders) must be solid first. Good candidate for a "Pro" tier differentiator when positioning for SaaS resale.
+
+---
+
+### Pre-consultation intake form ⬜ (high priority post-deploy)
+
+**What:** before a client's first booking, they fill out a short health questionnaire — contraindications (pregnancy, injuries, allergies), pressure preferences, problem areas. Stored in their profile, auto-surfaced to the specialist in the appointment detail view before each session.
+
+**Why it matters:** professional necessity for massage therapists (liability, personalisation). Most booking tools skip it entirely. Brings the platform from "booking tool" to "practice management tool."
+
+**Implementation:**
+- `intake_forms` table: `clientId`, `completedAt`, JSON fields for answers
+- Prompted on first login to `/compte` (dismissible, not blocking)
+- `GET /api/user/intake` / `POST /api/user/intake`
+- Shown in specialist's appointment detail drawer + client profile page
+- Schema: contraindications (checkboxes), free-text medical notes, pressure preference (light/medium/firm), problem areas (body map or checkboxes), allergies
+
+---
+
+### Waitlist system ⬜
+
+**What:** when a slot is fully booked, client joins a waitlist. On cancellation, first person in line gets a time-limited email/SMS with a one-click booking link (2h to claim before it moves to the next person).
+
+**Why it matters:** actively recovers revenue lost to cancellations. Zero friction for the specialist — fully automated.
+
+**Implementation:**
+- `waitlist_entries` table: `slotId`, `clientId` (or guest email), `createdAt`, `notifiedAt`
+- `POST /api/booking/waitlist` — adds to queue
+- On cancellation: query waitlist for that slot, email first entry with a signed token link, set 2h expiry
+- If token expires unclaimed, notify next in line
+- Client can see/manage their waitlist spots in `/compte`
+
+---
+
+### Embeddable booking widget ⬜ (biggest SaaS distribution lever)
+
+**What:** a `<script>` snippet the specialist pastes into their existing WordPress / Wix / Squarespace site. Adds a "Réserver" button that opens an inline booking modal (iframe pointing to the La Bulle De Vie booking flow).
+
+**Why it matters:** most wellness professionals already have a website and won't abandon it. A widget that works *alongside* their existing presence removes the biggest adoption blocker. One line of code = full booking system on any site.
+
+**Implementation:**
+- `GET /widget.js` — served from Next.js, injects a button + iframe modal into the host page
+- Accepts `data-specialist` attribute for the deployment identifier (future multi-tenant)
+- iframe points to `/booking?embed=true` — strips navbar/footer, adapts layout for modal
+- `postMessage` API for iframe ↔ host communication (close on success, resize)
+- CORS headers on booking routes to allow cross-origin iframe embedding
+- Specialist gets their snippet in dashboard settings → "Intégration site web"
+
+---
+
+### Post-session specialist notes ⬜
+
+**What:** after marking an appointment as completed, specialist writes a short private note (what was worked on, observations, recommended follow-up). Stored in the client profile. Never shown to the client — professional case record.
+
+**Why it matters:** serious practitioners keep these in a notebook anyway. Bringing it into the platform makes the dashboard genuinely indispensable — not just a booking tool but a practice management system. Creates lock-in.
+
+**Implementation:**
+- `sessionNotes` field on `Appointment` model (text, specialist-only)
+- `PATCH /api/dashboard/appointments/[id]/notes` — specialist-only, max 2000 chars
+- Shown in appointment detail drawer (edit inline after session)
+- Shown in client profile page (`/dashboard/clients/[id]`) — full session history with notes
+- Already have `specialistNotes` on the client profile for general notes — session notes are per-appointment
 
 ---
 

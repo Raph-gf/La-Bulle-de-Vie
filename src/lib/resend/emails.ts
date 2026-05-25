@@ -1011,3 +1011,56 @@ export async function sendAppointmentReminder(to: string, data: BookingEmailData
 
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
 }
+
+export async function sendCancellationConfirmation(to: string, data: {
+  clientName: string
+  serviceName: string
+  date: string
+  time: string
+  refundEur: string
+  refundPolicy: "full" | "half" | "none"
+  ref: string
+}): Promise<void> {
+  const client = getResend()
+  if (!client) return
+
+  const policyLine =
+    data.refundPolicy === "full"
+      ? `Un remboursement intégral de <strong>${data.refundEur}</strong> a été initié et sera crédité sous 5 à 10 jours ouvrés.`
+      : data.refundPolicy === "half"
+        ? `Conformément à notre politique d'annulation, un remboursement de 50% (<strong>${data.refundEur}</strong>) a été initié et sera crédité sous 5 à 10 jours ouvrés.`
+        : "Aucun remboursement n'est possible pour une annulation de moins de 4h."
+
+  const html = emailWrapper(`
+  <tr>
+    <td style="background:#2C1F14;padding:40px 48px;border-radius:12px 12px 0 0;text-align:center;">
+      <p style="margin:0;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#C4956A;">La Bulle de Vie</p>
+      <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:normal;color:#F5EDE5;">
+        Votre rendez-vous a été annulé
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="background:#FDFAF7;padding:48px;">
+      <p style="margin:0 0 28px;font-size:16px;color:#1C1C1C;">Bonjour <strong>${data.clientName}</strong>,</p>
+      <p style="margin:0 0 24px;font-size:15px;color:#6B5C4E;line-height:1.7;">
+        Votre séance <strong>${data.serviceName}</strong> du <strong>${data.date}</strong> à <strong>${data.time}</strong>
+        (réf. ${data.ref}) a bien été annulée.
+      </p>
+      <p style="margin:0 0 32px;font-size:15px;color:#6B5C4E;line-height:1.7;">${policyLine}</p>
+      <p style="margin:0;font-size:15px;color:#1C1C1C;line-height:1.7;">
+        Nous espérons vous revoir bientôt.<br>
+        <em style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2C1F14;">L'équipe La Bulle de Vie</em>
+      </p>
+    </td>
+  </tr>`)
+
+  const { error } = await client.emails.send({
+    from: FROM,
+    to,
+    subject: `Annulation confirmée — ${data.serviceName} · ${data.date}`,
+    html,
+  })
+
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`)
+}

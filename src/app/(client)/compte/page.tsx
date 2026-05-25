@@ -681,7 +681,39 @@ export default function ComptePage() {
                         </div>
                         <div className="appt-actions">
                           {canCancel && cancelLabel ? (
-                            <button className="btn-small danger" onClick={() => { if (confirm("Annuler ce rendez‑vous ?")) toast.success("Annulation envoyée — l'équipe vous confirme le remboursement.") }}>
+                            <button className="btn-small danger" onClick={async () => {
+                              const msg = hoursUntil > 24
+                                ? "Annuler ce rendez‑vous ? Vous serez remboursé intégralement."
+                                : "Annuler ce rendez‑vous ? Remboursement à 50% selon notre politique."
+                              if (!confirm(msg)) return
+                              try {
+                                const res = await fetch("/api/booking/cancel", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ appointmentId: appt.id }),
+                                })
+                                if (!res.ok) {
+                                  const d = await res.json()
+                                  toast.error(d.error ?? "Erreur lors de l'annulation")
+                                  return
+                                }
+                                const d = await res.json()
+                                const msg = d.refundPolicy === "full"
+                                  ? "Rendez-vous annulé — remboursement intégral initié."
+                                  : d.refundPolicy === "half"
+                                    ? "Rendez-vous annulé — remboursement à 50% initié."
+                                    : "Rendez-vous annulé."
+                                toast.success(msg)
+                                // Refresh the appointments list
+                                setApptsLoading(true)
+                                fetch("/api/user/appointments")
+                                  .then(r => r.json())
+                                  .then(d => setAppts(d.appointments ?? []))
+                                  .finally(() => setApptsLoading(false))
+                              } catch {
+                                toast.error("Erreur lors de l'annulation")
+                              }
+                            }}>
                               {cancelLabel}
                             </button>
                           ) : isToday ? (
