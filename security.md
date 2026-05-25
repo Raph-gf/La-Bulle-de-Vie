@@ -808,13 +808,13 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **C2** — Verify `pi.amount_received` against DB service price in `booking/confirm`
 - [ ] **C3** — Move promo code validation server-side; wire to `discount_codes` table
 - [ ] **C4** — Add missing `UNIQUE INDEX` for `stripePaymentIntentId` on `appointments` and `orders` tables
-- [ ] **C5** — Add Stripe refund to `orders/confirm` STOCK_ISSUE branch
+- [x] **C5** — Add Stripe refund to `orders/confirm` STOCK_ISSUE branch ✅ fixed
 - [ ] **C6** — Fix concurrent stock decrement with conditional update inside transaction
 - [ ] **C7** — Add `CHECK (stars >= 1 AND stars <= 5)` constraint to `reviews` table
 - [x] **H1** — Sanitise `next` param in auth callback (open redirect) ✅ fixed
 - [x] **H2** — Sanitise `redirectTo` param in login page (open redirect) ✅ fixed
-- [ ] **H3** — Add role check to `GET /api/dashboard/appointments`
-- [ ] **H4** — Add role check to `GET/POST /api/dashboard/settings`
+- [x] **H3** — Add role check to `GET /api/dashboard/appointments` ✅ already present
+- [x] **H4** — Add role check to `GET/POST /api/dashboard/settings` ✅ already present
 - [ ] **H5** — Verify `pi.amount_received` against DB product prices in `orders/confirm`
 - [ ] **H6** — Add CSRF `state` param to Google Calendar OAuth flow
 - [ ] **H7** — Add Zod validation to `travelPricing` and `taxSettings` before DB write
@@ -822,7 +822,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **H9** — Include shipping fee in Stripe PaymentIntent for orders
 - [ ] **H10** — Add specialist role check to Google Calendar OAuth callback
 - [ ] **H11** — Add Zod validation to `POST /api/dashboard/availability` (NaN time DoS)
-- [ ] **H12** — Wrap availability deleteMany + createMany in a single `$transaction`
+- [x] **H12** — Wrap availability deleteMany + createMany in a single `$transaction` ✅ fixed
 
 ### Should fix before launch
 - [ ] **M1** — Enable RLS on `discount_codes`, `gift_cards`, `newsletter_subscribers`

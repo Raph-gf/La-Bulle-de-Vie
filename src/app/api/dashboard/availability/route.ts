@@ -92,12 +92,9 @@ export async function POST(req: NextRequest) {
     data: { weeklySchedule: body as object },
   })
 
+  // Pre-compute slots before touching the DB — no DB access needed here
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
-
-  await prisma.availabilitySlot.deleteMany({
-    where: { date: { gte: today }, isBooked: false },
-  })
 
   const slotsToCreate: { date: Date; startTime: string; endTime: string }[] = []
 
@@ -123,9 +120,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (slotsToCreate.length > 0) {
-    await prisma.availabilitySlot.createMany({ data: slotsToCreate })
-  }
+  // Atomic: delete old unbooked slots + create new ones in one transaction.
+  // If createMany fails, deleteMany is rolled back — no window with zero availability.
+  await prisma.$transaction(async (tx) => {
+    await tx.availabilitySlot.deleteMany({ where: { date: { gte: today }, isBooked: false } })
+    if (slotsToCreate.length > 0) {
+      await tx.availabilitySlot.createMany({ data: slotsToCreate })
+    }
+  })
 
   return NextResponse.json({ generated: slotsToCreate.length })
 }

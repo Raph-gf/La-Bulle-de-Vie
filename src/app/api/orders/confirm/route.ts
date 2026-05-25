@@ -49,37 +49,49 @@ export async function POST(req: NextRequest) {
     })
 
     // Atomic: decrement stock + create order + create items
-    const order = await prisma.$transaction(async (tx) => {
-      for (const line of rawItems) {
-        const p = products.find(p => p.id === line.id)
-        if (!p || p.stock < line.qty) throw new Error("STOCK_ISSUE")
-        await tx.product.update({
-          where: { id: line.id },
-          data: { stock: { decrement: line.qty } },
-        })
-      }
+    let order
+    try {
+      order = await prisma.$transaction(async (tx) => {
+        for (const line of rawItems) {
+          const p = products.find(p => p.id === line.id)
+          if (!p || p.stock < line.qty) throw new Error("STOCK_ISSUE")
+          await tx.product.update({
+            where: { id: line.id },
+            data: { stock: { decrement: line.qty } },
+          })
+        }
 
-      return tx.order.create({
-        data: {
-          clientId,
-          guestName: clientId ? null : (guestName || null),
-          guestEmail: clientId ? null : (guestEmail || null),
-          status: "paid",
-          total: pi.amount,
-          amountPaid: pi.amount_received,
-          stripePaymentIntentId: pi.id,
-          shippingAddress: shippingAddress ?? null,
-          items: {
-            create: rawItems.map(line => ({
-              productId: line.id,
-              quantity: line.qty,
-              unitPrice: products.find(p => p.id === line.id)!.price,
-            })),
+        return tx.order.create({
+          data: {
+            clientId,
+            guestName: clientId ? null : (guestName || null),
+            guestEmail: clientId ? null : (guestEmail || null),
+            status: "paid",
+            total: pi.amount,
+            amountPaid: pi.amount_received,
+            stripePaymentIntentId: pi.id,
+            shippingAddress: shippingAddress ?? null,
+            items: {
+              create: rawItems.map(line => ({
+                productId: line.id,
+                quantity: line.qty,
+                unitPrice: products.find(p => p.id === line.id)!.price,
+              })),
+            },
           },
-        },
-        select: { id: true },
+          select: { id: true },
+        })
       })
-    })
+    } catch (txErr) {
+      if (txErr instanceof Error && txErr.message === "STOCK_ISSUE") {
+        await stripe.refunds.create({ payment_intent: paymentIntentId, reason: "duplicate" })
+        return NextResponse.json(
+          { error: "Stock insuffisant — votre paiement sera remboursé automatiquement." },
+          { status: 409 }
+        )
+      }
+      throw txErr
+    }
 
     const ref = `BDV-${pi.id.slice(-6).toUpperCase()}`
     const email = guestEmail || (clientId ? undefined : undefined)
