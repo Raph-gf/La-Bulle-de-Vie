@@ -55,6 +55,7 @@
 
 ### Supabase middleware (graceful skip)
 - ✅ Middleware and `(client)/layout.tsx` both skip auth check when `NEXT_PUBLIC_SUPABASE_URL` is not set — allows local development without Supabase
+- ⬜ **Production middleware** — route-level auth guard before React renders (see Phase 8)
 
 ---
 
@@ -530,8 +531,101 @@
 
 ---
 
-## Phase 8 — Missing pages & loose ends
+## Phase 8 — Security, missing pages & loose ends
 
+### Middleware (auth guard) ✅
+- ✅ **`src/middleware.ts`** — route-level auth guard using `@supabase/ssr`
+  - Refreshes session cookie on every request (required for SSR auth to stay valid)
+  - Redirects unauthenticated users hitting `/dashboard/*` or `/compte` → `/login`
+  - Returns `401 { error: "Unauthorized" }` for unauthenticated `/api/dashboard/*` and `/api/user/*` requests
+  - Graceful skip when `NEXT_PUBLIC_SUPABASE_URL` is not set (local dev without Supabase)
+  - Matcher excludes `_next/static`, `_next/image`, `favicon.ico`, and all static file extensions
+  - Role check (specialist vs client) stays in the RSC layouts — they have Prisma access; middleware only guards session existence
+
+### Email templates — redesigned from design handoff
+- ✅ **Specialist booking notification** — full redesign to match `Email - Notification spécialiste.html`
+  - Dark date tile with large day number + terra time, client card with VIP badge + session stats
+  - Dashed private notes block, italic client message, itemised payment table with promo + Stripe fees + green net total
+  - 16 new optional fields (dayOfWeek, dayNum, monthYear, durationMin, sessionCount, totalSpend, isVip, clientMessage, privateNotes, additionalItems, promoCode, promoDiscount, stripeFees, netAmount, dashboardUrl, clientProfileUrl)
+- ✅ **Client booking confirmation** — full redesign to match `Email - Confirmation client.html`
+  - Terra check-circle hero, "Votre bulle est posée." headline, personalised greeting with first name
+  - Booking detail rows (date / time range / location + map / ref), "Voir mon espace" + "Ajouter au calendrier" CTAs
+  - Receipt table with extra items + promo + dark total, numbered 01/02/03 preparation ritual, dark specialist quote block
+  - 14 new optional fields (timeEnd, durationMin, locationLine2, mapUrl, specialistName, additionalItems, promoCode, promoDiscount, totalPaid, paymentMethod, invoiceUrl, specialistMessage, accountUrl, calendarUrl)
+
+### UI redesigns from design handoff
+- ✅ **Panier page** — full redesign: rich item rows with undo-remove toast, shipping selector (standard/express/retrait), promo codes (BULLE20 20%, BIENVENUE €15), cross-sell products, TVA/totals breakdown
+- ✅ **Bottom Sheet component** (`src/components/ui/Sheet.tsx`) — imperative API (`sheet.open()` / `sheet.close()`), drag-to-dismiss, scroll lock, `SheetChips` + `SheetListItem` sub-components
+- ✅ **Contact page** — complete redesign: 2-column layout, subject picker (4 topics), opening hours from DB, file attachment, GDPR checkbox
+- ✅ **Contact opening hours** — fetched live from specialist's `weeklySchedule` via `GET /api/opening-hours` (5-min ISR cache)
+
+### Security sprint ✅ (2026-05-25) — 32 / 35 issues fixed
+
+Full audit documented in `security.md`. Three passes: manual analysis + security-reviewer agent + system-architect agent.
+
+#### Authentication & session
+- ✅ Open redirect in OAuth callback (`next` param) — sanitised to reject `//` prefix
+- ✅ Open redirect in login page (`redirectTo` param) — same fix
+- ✅ Dashboard layout replaced `profile.upsert` (ran SPECIALIST_EMAIL check on every page load) with `profile.findUnique` — role bootstrap belongs only in `auth/callback`
+- ✅ `booking/confirm` now checks that the authenticated session user matches `clientId` in PI metadata (M3)
+
+#### Role guards & access control
+- ✅ All dashboard API routes guard with `profile.role === "specialist"` via Prisma — never rely on JWT claims alone
+- ✅ Specialist role check added to Google Calendar OAuth callback + disconnect routes
+- ✅ `GET /api/travel-fee` now requires authentication (was open proxy to Nominatim/OSM)
+- ✅ `GET /api/booking/status` — if authenticated, verifies the PI belongs to the caller's account
+
+#### Payment integrity
+- ✅ `booking/confirm` verifies `pi.amount_received >= service.price - discount + travelFee - 10¢` — prevents booking for €0.01
+- ✅ `orders/confirm` verifies `pi.amount_received >= sum(product.price × qty) + shippingFee - 10¢`
+- ✅ `isFirstVisit` discount now DB-verified — only authenticated clients with zero prior non-cancelled appointments qualify; guests never get the discount
+- ✅ Concurrent stock decrement fixed — replaced check-then-update (TOCTOU race) with atomic `updateMany(WHERE stock >= qty)`; zero-count triggers auto-refund
+- ✅ Shipping fee (standard €6.50 / express €14.90 / pickup €0) now included in Stripe PaymentIntent — cart was showing fee but PI was created without it
+- ✅ Travel zone in booking now geocodes client address and calls `computeTravelFee` — previously always applied zone 0 regardless of distance
+- ✅ `orders/confirm` STOCK_ISSUE branch now triggers Stripe auto-refund
+
+#### Input validation
+- ✅ `travelPricing` and `taxSettings` in settings POST now parsed through Zod schemas before storage
+- ✅ `lunchStart` / `lunchEnd` in availability POST validated against `HH:MM` regex (NaN injection vector closed)
+- ✅ Cart capped at 50 items; quantity validated as positive integer in `POST /api/orders`
+- ✅ File upload extension derived from MIME type, not filename
+- ✅ Date params in dashboard appointments GET validated with `isNaN()` before Prisma query
+
+#### Price unit consistency (M16)
+- ✅ Services API now accepts price in **euros** and multiplies × 100 server-side — same as boutique API. Removed `Math.round(price * 100)` from the prestations dashboard form.
+
+#### XSS
+- ✅ `dangerouslySetInnerHTML` on login page replaced with safe text interpolation
+
+#### HTTP security headers
+- ✅ Content-Security-Policy added to `next.config.ts` — `default-src 'self'`, Stripe frames, Supabase, Google Fonts, no external scripts
+
+#### Supabase / database
+- ✅ `REVOKE EXECUTE ON FUNCTION handle_new_user() FROM PUBLIC` — migration 003 (was callable by any anon role)
+- ✅ `UNIQUE INDEX` on `appointments.stripePaymentIntentId` and `orders.stripePaymentIntentId` — migration 004
+- ✅ `CHECK (stars >= 1 AND stars <= 5)` constraint on reviews — migration 004
+- ✅ Composite performance indexes: `(date, isBooked)`, `(clientId, status)`, `(serviceId, approved)` — migration 004
+- ✅ `profiles` UPDATE policy split by role — migration 005 prevents client → specialist escalation via direct Supabase client call
+- ✅ RLS enabled on `discount_codes`, `gift_cards`, `newsletter_subscribers` — migration 006
+
+#### Code quality
+- ✅ `src/lib/auth.ts` — `requireSpecialist()` extracted to shared module; 12 identical inline copies removed from dashboard routes
+- ✅ `SPECIALIST_EMAIL` missing now logs `console.warn` in booking/confirm, stripe webhook, and reviews routes
+- ✅ Finances refund KPI uses `prisma.appointment.aggregate()` instead of summing the 20-row display slice
+- ✅ Dead stub `/api/stripe/webhook` deleted (was returning `{ received: true }` silently)
+- ✅ Misleading `src/lib/stripe/client.ts` deleted (duplicate of `src/lib/stripe.ts`, name implied browser-safe)
+
+#### Still open
+- ⬜ **C3** — Promo codes (`BULLE20`, `BIENVENUE`) hardcoded in client bundle; discount never applied server-side
+- ⬜ **H6** — Google Calendar OAuth missing CSRF `state` parameter
+- ⬜ **H8** — Rate limiting (Upstash Redis) — `@upstash/ratelimit` on auth, booking, contact routes
+
+#### Migrations to run in Supabase SQL editor
+- ⬜ `supabase/migrations/004_indexes_and_constraints.sql`
+- ⬜ `supabase/migrations/005_profiles_role_policy.sql`
+- ⬜ `supabase/migrations/006_rls_missing_tables.sql`
+
+### Still to do
 - ⬜ Password reset form — `/login?mode=reset` (after clicking email link, let user enter new password via `updateUser`)
 - ✅ Profile auto-created in `profiles` table on signup (Supabase DB trigger) — see Phase 3
 - ✅ Review submission API — `POST /api/reviews` created (see Phase 5); still need the frontend form in `/compte#history`
@@ -561,7 +655,7 @@
 
 | Path | What it is |
 |------|------------|
-| `src/app/bulle.css` | Entire CSS design system (~1100 lines) |
+| `src/app/bulle.css` | Entire CSS design system (~2550 lines) |
 | `src/lib/soins.ts` | Static data for all 6 soins (typed) |
 | `src/components/booking/BookingWizard.tsx` | 5-step booking wizard component |
 | `src/components/animations/Reveal.tsx` | Motion whileInView wrapper |
@@ -573,10 +667,11 @@
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 7 — E-commerce
-## Last session: 2026-05-23
-## Phase 6 complete ✅ — All dashboard pages built. Google Calendar OAuth integrated. Booking flow fully wired (emails + calendar on payment).
-## Next step: Wire /decorations catalog to real Prisma products → Zustand cart → /panier page → Stripe checkout for cart → order confirmation email
+## Current phase: Phase 8 — Security & polish
+## Last session: 2026-05-25
+## Phase 7 complete ✅ — Full e-commerce flow: Décorations catalog wired, Zustand cart, /panier page, Stripe checkout, order confirmation email + page.
+## Security sprint complete ✅ — 32/35 issues fixed across 5 batches. Remaining: C3 (promo codes server-side), H6 (GCal OAuth CSRF), H8 (rate limiting). 3 SQL migrations still need to be run in Supabase dashboard (004, 005, 006).
+## Next step: C3 + H6 to close the security sprint → then features (password reset, /compte data wiring, cancellation flow)
 
 ---
 
