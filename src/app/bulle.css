@@ -1870,3 +1870,223 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
   background: rgba(34,24,18,.08);
   border-radius: 0 0 12px 12px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LOADING SCREEN — Chargement.html design handoff
+   Full-page branded loading state used in (public) and (client) loading.tsx
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ld-root {
+  position: fixed; inset: 0; z-index: 9000;
+  background:
+    radial-gradient(ellipse at 20% 10%, #F7E3CE 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 90%, #E9DCC9 0%, transparent 50%),
+    linear-gradient(180deg, #F7EFE3 0%, #F1E7DA 100%);
+  overflow: hidden;
+}
+
+/* Ambient bubble field */
+.ld-bub-field { position: absolute; inset: 0; pointer-events: none; overflow: hidden }
+.ld-bub {
+  position: absolute; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 28%, #ffffffd8 0%, #ffffff40 25%, transparent 55%),
+    radial-gradient(circle at 70% 75%, var(--terra-soft) 0%, transparent 50%);
+  border: 1px solid #ffffff70;
+  box-shadow: inset 0 0 24px #ffffff40, 0 8px 24px #2218121a;
+  opacity: .5;
+  animation: ldBubFloat linear infinite, ldBubWobble ease-in-out infinite;
+}
+.ld-bub::before {
+  content: ""; position: absolute; top: 14%; left: 18%;
+  width: 24%; height: 18%; border-radius: 50%;
+  background: #ffffffcc; filter: blur(2px);
+}
+@keyframes ldBubFloat {
+  0%   { transform: translate3d(0, 105vh, 0) scale(.6); opacity: 0 }
+  8%   { opacity: .55 }
+  92%  { opacity: .4 }
+  100% { transform: translate3d(var(--ldx, 40px), -25vh, 0) scale(1); opacity: 0 }
+}
+@keyframes ldBubWobble { 50% { margin-left: 18px } }
+
+/* Center content */
+.ld-center {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 32px; text-align: center;
+}
+
+/* Brand */
+.ld-brand {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 64px;
+  opacity: 0; animation: ldFadeIn .8s ease .2s forwards;
+}
+.ld-brand-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff, var(--terra) 70%);
+  box-shadow: 0 0 12px var(--terra-soft);
+  animation: ldPulse 3s ease-in-out infinite;
+}
+.ld-brand-name {
+  font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--ink);
+}
+@keyframes ldPulse {
+  0%, 100% { transform: scale(1);   box-shadow: 0 0 12px var(--terra-soft) }
+  50%       { transform: scale(1.2); box-shadow: 0 0 20px var(--terra) }
+}
+
+/* Stage */
+.ld-stage {
+  position: relative; width: 280px; height: 280px; margin-bottom: 48px;
+}
+
+/* Rings */
+.ld-rings { position: absolute; inset: 0; pointer-events: none }
+.ld-ring {
+  position: absolute; inset: 30%;
+  border: 1.5px solid var(--terra); border-radius: 50%;
+  opacity: 0; animation: ldRingOut 3s ease-out infinite;
+}
+.ld-ring:nth-child(1) { animation-delay: 0s }
+.ld-ring:nth-child(2) { animation-delay: 1s }
+.ld-ring:nth-child(3) { animation-delay: 2s }
+@keyframes ldRingOut {
+  0%   { transform: scale(.4); opacity: 0 }
+  10%  { opacity: .55 }
+  100% { transform: scale(2.2); opacity: 0 }
+}
+
+/* Main bubble */
+.ld-main-bubble {
+  position: absolute; top: 50%; left: 50%;
+  width: 80px; height: 80px; margin: -40px 0 0 -40px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 28%, #ffffffd0 0%, #ffffff30 25%, transparent 55%),
+    radial-gradient(circle at 70% 75%, var(--terra-soft) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, #F7E3CE 0%, #E9DCC9 100%);
+  border: 2px solid #ffffff90;
+  box-shadow:
+    inset 0 0 30px #ffffff70,
+    inset 0 -10px 30px #B86F4A30,
+    0 20px 50px -10px var(--terra-soft),
+    0 10px 40px -10px #2218127a;
+  animation: ldBlow 3.6s cubic-bezier(.4,.1,.4,1) infinite;
+}
+.ld-main-bubble::before {
+  content: ""; position: absolute; top: 14%; left: 18%;
+  width: 24%; height: 18%; border-radius: 50%;
+  background: #ffffffee; filter: blur(2px);
+}
+.ld-main-bubble::after {
+  content: ""; position: absolute; top: 20%; left: 24%;
+  width: 6%; height: 5%; border-radius: 50%; background: #fff;
+}
+@keyframes ldBlow {
+  0%   { transform: translate(0, 60px) scale(.2); opacity: 0 }
+  18%  { transform: translate(0, 40px) scale(.55); opacity: 1 }
+  55%  { transform: translate(0, 0)    scale(1.05) }
+  78%  { transform: translate(0, -30px) scale(1.05); opacity: 1 }
+  92%  { transform: translate(0, -50px) scale(1.18); opacity: 0 }
+  100% { transform: translate(0, -60px) scale(1.2); opacity: 0 }
+}
+
+/* Satellite bubbles */
+.ld-sat {
+  position: absolute; top: 50%; left: 50%; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 28%, #ffffffd0 0%, #ffffff20 30%, transparent 55%),
+    radial-gradient(circle at 70% 75%, var(--terra-soft) 0%, transparent 60%);
+  border: 1px solid #ffffff80;
+  box-shadow: inset 0 0 14px #ffffff60, 0 6px 18px -4px var(--terra-soft);
+  opacity: 0;
+  animation: ldSatRise 3.6s ease-in-out infinite;
+}
+.ld-sat::before {
+  content: ""; position: absolute; top: 18%; left: 20%;
+  width: 24%; height: 20%; border-radius: 50%;
+  background: #ffffffcc; filter: blur(1.5px);
+}
+@keyframes ldSatRise {
+  0%   { transform: translate(0, 40px) scale(.3); opacity: 0 }
+  20%  { transform: translate(calc(var(--tx) * .2), 0) scale(.8); opacity: .9 }
+  80%  { transform: translate(calc(var(--tx) * .85), calc(var(--ty) * .85)) scale(1); opacity: .7 }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1.1); opacity: 0 }
+}
+
+/* Title */
+.ld-title {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(32px, 4.6vw, 52px); line-height: 1.05;
+  margin-bottom: 14px; color: var(--ink);
+  opacity: 0; animation: ldFadeUp .8s ease .6s forwards;
+}
+.ld-title-italic { color: var(--terra); font-style: italic }
+
+/* Rotating message */
+.ld-msg {
+  position: relative; height: 24px;
+  font-family: var(--sans); font-size: 14.5px; color: var(--mute);
+  letter-spacing: .04em; margin-bottom: 32px; overflow: hidden;
+  opacity: 0; animation: ldFadeUp .8s ease .9s forwards;
+}
+.ld-msg-line {
+  position: absolute; left: 50%; top: 0;
+  transform: translateX(-50%) translateY(20px);
+  opacity: 0; white-space: nowrap;
+  transition: transform .55s cubic-bezier(.2,.7,.2,1), opacity .35s ease;
+}
+.ld-msg-line.in  { transform: translateX(-50%) translateY(0); opacity: 1 }
+.ld-msg-line.out { transform: translateX(-50%) translateY(-20px); opacity: 0 }
+
+/* Progress track */
+.ld-track {
+  width: 320px; max-width: calc(100% - 32px);
+  height: 4px; background: #2218121f; border-radius: 99px;
+  overflow: hidden; position: relative;
+  opacity: 0; animation: ldFadeUp .8s ease 1.2s forwards;
+}
+.ld-track-fill {
+  height: 100%; width: 30%;
+  background: linear-gradient(90deg, var(--terra), var(--terra-soft), var(--terra));
+  background-size: 200% 100%; border-radius: 99px;
+  animation: ldTrackSlide 2.4s cubic-bezier(.4,0,.2,1) infinite, ldShimmer 1.6s linear infinite;
+}
+@keyframes ldTrackSlide {
+  0%   { transform: translateX(-100%); width: 30% }
+  50%  { width: 50% }
+  100% { transform: translateX(400%); width: 30% }
+}
+@keyframes ldShimmer { to { background-position: 200% 0 } }
+
+.ld-percent {
+  margin-top: 12px;
+  font-family: var(--serif); font-style: italic; color: var(--terra); font-size: 14px;
+  opacity: 0; animation: ldFadeUp .8s ease 1.3s forwards;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tip */
+.ld-tip {
+  position: absolute; bottom: 28px; left: 0; right: 0; text-align: center;
+  font-size: 11.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--mute);
+  opacity: 0; animation: ldFadeIn 1s ease 2s forwards;
+}
+.ld-tip em {
+  font-family: var(--serif); font-style: italic;
+  text-transform: none; letter-spacing: .02em;
+  color: var(--ink-soft); font-size: 13px;
+}
+
+/* Shared keyframes */
+@keyframes ldFadeIn  { to { opacity: 1 } }
+@keyframes ldFadeUp  { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .ld-main-bubble, .ld-sat, .ld-ring, .ld-track-fill, .ld-bub { animation: none }
+  .ld-main-bubble { transform: none; opacity: 1 }
+}
