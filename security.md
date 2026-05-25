@@ -830,11 +830,11 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **M3** — Bind PaymentIntent to session user in `booking/confirm`
 - [x] **M4** — Add auth to `/api/booking/status` ✅ fixed
 - [x] **M5** — Delete or replace dead stub `/api/stripe/webhook` ✅ deleted
-- [ ] **M6** — Derive file extension from MIME type, not filename
-- [ ] **M7** — Cap cart items at 50, validate qty is integer
+- [x] **M6** — Derive file extension from MIME type, not filename ✅ fixed
+- [x] **M7** — Cap cart items at 50, validate qty is integer ✅ fixed
 - [x] **M8** — Replace `dangerouslySetInnerHTML` on login page ✅ fixed
 - [ ] **M9** — Remove `SPECIALIST_EMAIL` role derivation, use `profile.role` only
-- [ ] **M10** — Add Content-Security-Policy header to `next.config.ts`
+- [x] **M10** — Add Content-Security-Policy header to `next.config.ts` ✅ fixed
 - [x] **M11** — Add auth to `GET /api/travel-fee` to prevent Nominatim proxy abuse ✅ fixed
 - [x] **M12** — Delete `src/lib/stripe/client.ts` (misleading duplicate) ✅ deleted
 - [x] **M13** — Add role check to `POST /api/auth/google-calendar/disconnect` ✅ fixed
@@ -845,7 +845,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 ### Polish / good hygiene
 - [x] **L1** — Remove PII from `console.log` in API routes ✅ fixed
 - [ ] **L2** — Extract `requireSpecialist` to shared `src/lib/auth.ts` (also fixes L6 401 vs 403)
-- [ ] **L3** — Validate date params before passing to Prisma
+- [x] **L3** — Validate date params before passing to Prisma ✅ fixed
 - [ ] **L4** — Add warning log when `SPECIALIST_EMAIL` is missing
 - [x] **L7** — Move Nominatim contact email to env var (`NOMINATIM_CONTACT_EMAIL`) ✅ fixed
 - [ ] **L8** — Fix finances refund KPI to use DB aggregate, not `take: 20` slice

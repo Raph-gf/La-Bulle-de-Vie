@@ -16,6 +16,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Panier vide" }, { status: 400 })
     }
 
+    if (items.length > 50) {
+      return NextResponse.json({ error: "Trop d'articles dans le panier (max 50)" }, { status: 422 })
+    }
+
     const productIds = items.map(i => i.id)
     const products = await prisma.product.findMany({
       where: { id: { in: productIds }, isPublished: true },
@@ -24,9 +28,12 @@ export async function POST(req: NextRequest) {
 
     // Validate every item exists and has enough stock
     for (const line of items) {
+      if (!Number.isInteger(line.quantity) || line.quantity < 1) {
+        return NextResponse.json({ error: "Quantité invalide" }, { status: 422 })
+      }
       const p = products.find(p => p.id === line.id)
       if (!p) return NextResponse.json({ error: `Produit introuvable (${line.id})` }, { status: 422 })
-      if (line.quantity < 1 || line.quantity > p.stock) {
+      if (line.quantity > p.stock) {
         return NextResponse.json({ error: `Stock insuffisant pour « ${p.name} »` }, { status: 422 })
       }
     }

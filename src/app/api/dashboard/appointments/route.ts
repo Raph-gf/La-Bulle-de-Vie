@@ -26,6 +26,9 @@ export async function GET(req: NextRequest) {
     if (fromParam && toParam) {
       const from = new Date(fromParam)
       const to = new Date(toParam)
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+        return NextResponse.json({ error: "Paramètres de date invalides" }, { status: 400 })
+      }
       dateFilter = { gte: from, lt: to }
     } else {
       dateFilter = { gte: today }

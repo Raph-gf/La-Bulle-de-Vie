@@ -41,7 +41,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Fichier trop volumineux (max 5 Mo)" }, { status: 422 })
   }
 
-  const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase()
+  const MIME_TO_EXT: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/avif": "avif",
+  }
+  const ext = MIME_TO_EXT[file.type] ?? "jpg"
   const path = `services/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
   const buffer = new Uint8Array(await file.arrayBuffer())
