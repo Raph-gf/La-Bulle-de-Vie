@@ -14,31 +14,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect("/login")
 
-  const fullName =
-    user.user_metadata?.full_name ??
-    user.user_metadata?.name ??
-    user.email?.split("@")[0] ??
-    "Utilisateur"
-
-  const isSpecialist = user.email === process.env.SPECIALIST_EMAIL
-
   const [profile, pendingReviews, pendingAppts] = await Promise.all([
-    prisma.profile.upsert({
+    prisma.profile.findUnique({
       where: { id: user.id },
-      create: {
-        id: user.id,
-        fullName,
-        phone: user.user_metadata?.phone ?? null,
-        role: isSpecialist ? "specialist" : "client",
-      },
-      update: {},
       select: { role: true, fullName: true },
     }),
     prisma.review.count({ where: { approved: false } }),
     prisma.appointment.count({ where: { status: "pending" } }),
   ])
 
-  if (profile.role !== "specialist") redirect("/")
+  if (!profile || profile.role !== "specialist") redirect("/")
 
   const pendingCount = pendingReviews + pendingAppts
 

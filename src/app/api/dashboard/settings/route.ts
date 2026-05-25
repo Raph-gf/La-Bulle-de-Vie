@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { geocode } from "@/lib/geo"
+import { z } from "zod"
+
+const TravelZoneSchema = z.object({
+  maxKm: z.number().int().min(0).max(500),
+  feeInCents: z.number().int().min(0).max(100_000),
+})
+
+const TravelPricingSchema = z.object({
+  zones: z.array(TravelZoneSchema).min(1).max(20),
+  maxDistanceKm: z.number().int().min(0).max(500),
+})
+
+const TaxSettingsSchema = z.object({
+  servicesVatRate: z.number().min(0).max(100),
+  productsVatRate: z.number().min(0).max(100),
+})
 
 export async function GET() {
   try {
@@ -42,6 +58,20 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const { cabinetAddress, travelPricing, taxSettings } = body
+
+    if (travelPricing !== undefined) {
+      const result = TravelPricingSchema.safeParse(travelPricing)
+      if (!result.success) {
+        return NextResponse.json({ error: "Format travelPricing invalide" }, { status: 422 })
+      }
+    }
+
+    if (taxSettings !== undefined) {
+      const result = TaxSettingsSchema.safeParse(taxSettings)
+      if (!result.success) {
+        return NextResponse.json({ error: "Format taxSettings invalide" }, { status: 422 })
+      }
+    }
 
     let geocodeStatus: "ok" | "failed" | "unchanged" = "unchanged"
     let cabinetLat: number | undefined

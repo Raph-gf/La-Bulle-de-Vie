@@ -66,8 +66,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // C1: isFirstVisit discount only applies to authenticated clients with no prior booking
+    let isFirstVisitVerified = false
+    if (isFirstVisit && clientId) {
+      const existingAppt = await prisma.appointment.findFirst({
+        where: { clientId, status: { notIn: ["cancelled"] } },
+        select: { id: true },
+      })
+      isFirstVisitVerified = existingAppt === null
+    }
+
     let discountAmount = 0
-    if (isFirstVisit) {
+    if (isFirstVisitVerified) {
       discountAmount = Math.round(service.price * 0.2)
       amountInCents = service.price - discountAmount
     }
@@ -91,7 +101,7 @@ export async function POST(req: NextRequest) {
         location: location ?? "cabinet",
         clientAddress: (clientAddress ?? "").slice(0, 490),
         notes: (notes ?? "").slice(0, 490),
-        isFirstVisit: String(isFirstVisit ?? false),
+        isFirstVisit: String(isFirstVisitVerified),
         travelFeeInCents: String(travelFeeInCents),
         discountAmount: String(discountAmount),
       },

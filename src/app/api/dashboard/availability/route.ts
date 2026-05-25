@@ -87,6 +87,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (body.lunchStart !== undefined && body.lunchStart !== null && !TIME_RE.test(body.lunchStart)) {
+    return NextResponse.json({ error: "Heure de début de pause invalide" }, { status: 400 })
+  }
+  if (body.lunchEnd !== undefined && body.lunchEnd !== null && !TIME_RE.test(body.lunchEnd)) {
+    return NextResponse.json({ error: "Heure de fin de pause invalide" }, { status: 400 })
+  }
+
   await prisma.profile.update({
     where: { id: user.id },
     data: { weeklySchedule: body as object },
