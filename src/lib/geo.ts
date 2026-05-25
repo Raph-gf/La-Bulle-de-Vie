@@ -27,7 +27,7 @@ export async function geocode(address: string): Promise<{ lat: number; lng: numb
   try {
     const res = await fetch(url.toString(), {
       headers: {
-        "User-Agent": "LaBulleDVie/1.0 (raphaelgarnier1997@gmail.com)",
+        "User-Agent": `LaBulleDVie/1.0 (${process.env.NOMINATIM_CONTACT_EMAIL ?? "contact@labulledevie.fr"})`,
         "Accept-Language": "fr",
       },
     })

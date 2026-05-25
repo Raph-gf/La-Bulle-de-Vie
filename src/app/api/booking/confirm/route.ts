@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       location, clientAddress, notes, isFirstVisit, travelFeeInCents, discountAmount,
     } = pi.metadata
 
-    console.log("[booking/confirm] metadata:", { slotId, serviceId, clientEmail, clientName, location })
+    console.log("[booking/confirm] metadata:", { slotId, serviceId, location })
 
     if (!slotId || !serviceId) {
       console.error("[booking/confirm] missing metadata — slotId:", slotId, "serviceId:", serviceId)

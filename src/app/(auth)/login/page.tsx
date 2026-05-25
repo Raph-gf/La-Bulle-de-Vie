@@ -538,7 +538,8 @@ function ConnexionPage() {
       setLoading(false)
       return
     }
-    const redirectTo = searchParams.get("redirectTo") ?? "/"
+    const rawRedirect = searchParams.get("redirectTo") ?? "/"
+    const redirectTo = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/"
     router.push(redirectTo)
   }
 
@@ -1020,8 +1021,9 @@ function ConnexionPage() {
                   boxShadow: "0 18px 40px -12px var(--terra)",
                   animation: "pop .6s cubic-bezier(.2,1.4,.4,1) backwards",
                 }}>✓</div>
-                <h2 style={{ fontFamily: "var(--serif)", fontSize: 32, lineHeight: 1.1, marginBottom: 14, fontWeight: 400 }}
-                  dangerouslySetInnerHTML={{ __html: successTitle }} />
+                <h2 style={{ fontFamily: "var(--serif)", fontSize: 32, lineHeight: 1.1, marginBottom: 14, fontWeight: 400 }}>
+                  {successTitle}
+                </h2>
                 <p style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 340, margin: "0 auto 28px", color: "var(--mute)" }}>{successText}</p>
                 <Link href="/" style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
