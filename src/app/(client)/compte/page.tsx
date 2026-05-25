@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { AppointmentCardsSkeleton } from "@/components/ui/Skeleton"
 
 type View = "overview" | "appts" | "history" | "favorites" | "preferences" | "payments" | "gifts" | "settings"
 const ALL_VIEWS: View[] = ["overview", "appts", "history", "favorites", "preferences", "payments", "gifts", "settings"]
@@ -628,9 +629,7 @@ export default function ComptePage() {
                   <h3>Mes rendez‑vous</h3>
                   <Link href="/booking">+ Nouveau rendez‑vous</Link>
                 </div>
-                {apptsLoading && (
-                  <p style={{ color: "var(--mute)", fontStyle: "italic", padding: "16px 0" }}>Chargement…</p>
-                )}
+                {apptsLoading && <AppointmentCardsSkeleton count={3} />}
                 {!apptsLoading && appts.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 0", color: "var(--mute)" }}>
                     <p style={{ fontFamily: "var(--serif)", fontSize: 18, marginBottom: 12 }}>Aucun rendez‑vous à venir.</p>
@@ -746,7 +745,7 @@ export default function ComptePage() {
                 <p className="lede">Vos séances passées — retrouvez, notez, téléchargez vos factures.</p>
               </div>
               <div className="card">
-                {historyLoading && <p style={{ color: "var(--mute)", fontStyle: "italic", padding: "32px 0", textAlign: "center" }}>Chargement…</p>}
+                {historyLoading && <AppointmentCardsSkeleton count={3} />}
                 {!historyLoading && history.length === 0 && (
                   <p style={{ color: "var(--mute)", fontSize: 14, fontStyle: "italic", textAlign: "center", padding: "32px 0" }}>Aucune séance passée pour le moment.</p>
                 )}

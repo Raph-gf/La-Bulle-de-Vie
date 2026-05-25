@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
+import { CalendarSkeleton, SlotsSkeleton } from "@/components/ui/Skeleton"
 import { loadStripe } from "@stripe/stripe-js"
 import {
   Elements,
@@ -686,9 +687,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                   <div className="panel">
                     <span className="eyebrow">Étape 2</span>
                     <h2 style={{ marginTop: 12 }}>Choisissez <span className="italic">une date.</span></h2>
-                    <p className="panel-sub">
-                      {datesLoading ? "Chargement des disponibilités…" : "Seules les dates avec des créneaux libres sont sélectionnables."}
-                    </p>
+                    <p className="panel-sub">Seules les dates avec des créneaux libres sont sélectionnables.</p>
                     <div className="cal">
                       <div className="cal-head">
                         <div className="mname">{MONTHS[viewMonth]} {viewYear}</div>
@@ -712,7 +711,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                           >›</button>
                         </div>
                       </div>
-                      <div className="cal-grid">
+                      {datesLoading ? <CalendarSkeleton days={35} /> : <div className="cal-grid">
                         {DOW.map(d => <div key={d} className="cal-dow">{d}</div>)}
                         {Array.from({ length: startOffset }, (_, i) => (
                           <div key={`e${i}`} className="cal-cell empty" />
@@ -743,7 +742,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                             </div>
                           )
                         })}
-                      </div>
+                      </div>}
                     </div>
                     <div className="step-nav">
                       <button className="ghost" onClick={() => goTo(0)}>← Retour</button>
@@ -761,9 +760,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                     <h2 style={{ marginTop: 12 }}>À quelle heure <span className="italic">vous attendre ?</span></h2>
                     <p className="panel-sub">Les créneaux affichés sont disponibles pour la date choisie.</p>
                     <div className="slots">
-                      {slotsLoading && (
-                        <p style={{ color: "var(--mute)", fontStyle: "italic", gridColumn: "1/-1" }}>Chargement des créneaux…</p>
-                      )}
+                      {slotsLoading && <SlotsSkeleton count={6} />}
                       {!slotsLoading && availableSlots.length === 0 && (
                         <p style={{ color: "var(--mute)", fontStyle: "italic", gridColumn: "1/-1" }}>
                           Aucun créneau disponible pour cette date. Essayez une autre journée.

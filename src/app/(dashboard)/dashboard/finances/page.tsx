@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { KpiGridSkeleton } from "@/components/ui/Skeleton"
 import {
   useFinances,
   type MonthlyBucket,
@@ -352,8 +353,22 @@ export default function FinancesPage() {
     return (
       <div className="view active">
         <div className="view-head"><div><h1>Finances</h1></div></div>
-        <div style={{ color: "var(--mute)", fontSize: 13, padding: "60px 0", textAlign: "center" }}>
-          Chargement des données financières…
+        <KpiGridSkeleton />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginTop: 18 }}>
+          <div className="card">
+            <div className="sk" style={{ width: 120, height: 18, marginBottom: 24 }} />
+            <div className="sk" style={{ width: "100%", height: 180, borderRadius: 10 }} />
+          </div>
+          <div className="card">
+            <div className="sk" style={{ width: 100, height: 18, marginBottom: 24 }} />
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div className="sk" style={{ width: 130, height: 12 }} />
+                <div className="sk" style={{ flex: 1, height: 8, borderRadius: 99 }} />
+                <div className="sk" style={{ width: 50, height: 12 }} />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

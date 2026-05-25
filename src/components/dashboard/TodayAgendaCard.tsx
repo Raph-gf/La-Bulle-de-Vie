@@ -2,6 +2,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useAppointments, type Appt } from "@/lib/queries/appointments"
+import { AgendaRowsSkeleton } from "@/components/ui/Skeleton"
 
 type Tab = "today" | "tomorrow" | "week"
 
@@ -80,9 +81,7 @@ export default function TodayAgendaCard({ initialAppts }: Props) {
       </div>
 
       {loading ? (
-        <div style={{ padding: "32px 0", textAlign: "center", color: "var(--mute)", fontStyle: "italic", fontSize: 13 }}>
-          Chargement…
-        </div>
+        <AgendaRowsSkeleton />
       ) : appts.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 24px" }}>
           <p style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--mute)", fontStyle: "italic", marginBottom: 16 }}>
