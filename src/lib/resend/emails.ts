@@ -22,6 +22,21 @@ interface BookingEmailData {
   clientAddress?: string
   amountEur: string
   ref: string
+  // Rich confirmation fields — all optional for backward compat
+  timeEnd?: string
+  durationMin?: number
+  locationLine2?: string
+  mapUrl?: string
+  specialistName?: string
+  additionalItems?: { label: string; price: string }[]
+  promoCode?: string
+  promoDiscount?: string
+  totalPaid?: string
+  paymentMethod?: string
+  invoiceUrl?: string
+  specialistMessage?: string
+  accountUrl?: string
+  calendarUrl?: string
 }
 
 interface SpecialistNotificationData extends BookingEmailData {
@@ -91,99 +106,294 @@ function labelCell(label: string, value: string): string {
 // ─── Booking confirmation (to client) ────────────────────────────────────────
 
 function buildConfirmationHtml(d: BookingEmailData): string {
-  const locationLabel = d.location === "domicile" ? "À domicile" : "Au cabinet"
-  const addressLine = d.location === "domicile" && d.clientAddress
-    ? `<p style="margin:2px 0 0;font-size:13px;color:#6B5C4E;">${d.clientAddress}</p>`
+  const isHome = d.location === "domicile"
+  const locationMain = isHome ? "&#192; domicile" : "Cabinet &#183; 12 rue des Capucins"
+  const locationSub = isHome
+    ? (d.clientAddress ? `<p style="margin:4px 0 0;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">${d.clientAddress}</p>` : "")
+    : (d.locationLine2
+      ? `<p style="margin:4px 0 0;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">${d.locationLine2}${d.mapUrl ? ` &#183; <a href="${d.mapUrl}" style="color:#B86F4A;font-style:italic;">voir le plan</a>` : ""}</p>`
+      : "")
+
+  const timeDisplay = d.timeEnd
+    ? `${d.time} &#8212; ${d.timeEnd}${d.durationMin ? ` <span style="color:#8B7563;font-size:14px;">(${d.durationMin} min)</span>` : ""}`
+    : d.durationMin
+    ? `${d.time} <span style="color:#8B7563;font-size:14px;">(${d.durationMin} min)</span>`
+    : d.time
+
+  const additionalRows = (d.additionalItems ?? []).map(item =>
+    `<tr>
+      <td style="padding:8px 0;border-top:1px dashed #2218121f;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">${item.label}</td>
+      <td align="right" style="padding:8px 0;border-top:1px dashed #2218121f;font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;color:#221812;">${item.price}</td>
+    </tr>`
+  ).join("")
+
+  const promoRow = d.promoCode && d.promoDiscount
+    ? `<tr>
+        <td style="padding:8px 0;border-top:1px dashed #2218121f;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#B86F4A;">Code ${d.promoCode}</td>
+        <td align="right" style="padding:8px 0;border-top:1px dashed #2218121f;font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;color:#B86F4A;">${d.promoDiscount}</td>
+      </tr>`
     : ""
 
-  return emailWrapper(`
-  <!-- header -->
-  <tr>
-    <td style="background:#2C1F14;padding:44px 48px 40px;border-radius:12px 12px 0 0;text-align:center;">
-      <p style="margin:0;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#C4956A;">La Bulle de Vie</p>
-      <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:normal;color:#F5EDE5;">
-        Votre rendez-vous est confirmé
-      </h1>
-    </td>
-  </tr>
-  <!-- body -->
-  <tr>
-    <td style="background:#FDFAF7;padding:48px;">
-      <p style="margin:0 0 8px;font-size:16px;color:#1C1C1C;">Bonjour <strong>${d.clientName}</strong>,</p>
-      <p style="margin:0 0 36px;font-size:15px;color:#6B5C4E;line-height:1.7;">
-        Votre réservation a bien été enregistrée. Nous avons hâte de vous accueillir.
-      </p>
+  const totalAmount = d.totalPaid ?? d.amountEur
+  const accountHref = d.accountUrl ?? "https://labulledevie.fr/mon-compte"
+  const calendarHref = d.calendarUrl ?? "https://labulledevie.fr/calendar.ics"
 
-      <!-- booking card -->
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#F5EDE5;border:1px solid #E2D5CB;border-radius:10px;margin-bottom:32px;">
+  const specialistQuote = d.specialistMessage ?? "Merci pour votre confiance. J'ai h&#226;te de vous accueillir dans la bulle. Si vous avez la moindre question d'ici-l&#224; &#8212; un mot, un coup de fil suffit."
+  const specialistSig = d.specialistName
+    ? `&#8212; ${d.specialistName.split(" ")[0]}`
+    : "&#8212; Laurence"
+
+  const firstName = d.clientName.split(" ")[0]
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<title>Confirmation de votre s&#233;ance &#8212; La bulle de vie</title>
+<style>
+  body{margin:0;padding:0;width:100% !important;background:#F1E7DA;}
+  table{border-collapse:collapse}
+  img{border:0;outline:none;display:block}
+  a{text-decoration:none;color:#B86F4A}
+  .preheader{display:none !important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden}
+  @media (prefers-color-scheme:dark){
+    body,.email-bg{background:#F1E7DA !important;}
+    .card{background:#FBF6EF !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F1E7DA;">
+
+<div class="preheader">&#192; bient&#244;t, ${firstName} &#8212; votre ${d.serviceName} est confirm&#233; pour le ${d.date} &#224; ${d.time}.</div>
+
+<table role="presentation" class="email-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F1E7DA;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+        <!-- Brand header -->
         <tr>
-          <td style="padding:28px 32px;">
-
-            <!-- service -->
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="border-bottom:1px solid #E2D5CB;padding-bottom:20px;margin-bottom:20px;">
+          <td align="center" style="padding:8px 0 28px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td>
-                  <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Prestation</p>
-                  <p style="margin:4px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#2C1F14;">${d.serviceName}</p>
+                <td style="vertical-align:middle;padding-right:12px;">
+                  <table cellpadding="0" cellspacing="0" border="0"><tr><td width="12" height="12" style="background:#B86F4A;border-radius:50%;line-height:12px;font-size:0;">&nbsp;</td></tr></table>
+                </td>
+                <td style="vertical-align:middle;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:#221812;letter-spacing:.01em;">
+                  La bulle de vie
                 </td>
               </tr>
             </table>
-
-            <!-- date / time -->
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="border-bottom:1px solid #E2D5CB;padding-bottom:20px;margin-bottom:20px;">
-              <tr>
-                ${labelCell("Date", d.date)}
-                ${labelCell("Heure", d.time)}
-              </tr>
-            </table>
-
-            <!-- location / amount -->
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="width:50%;padding-right:12px;vertical-align:top;">
-                  <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Lieu</p>
-                  <p style="margin:4px 0 0;font-size:15px;color:#2C1F14;font-weight:500;">${locationLabel}</p>
-                  ${addressLine}
-                </td>
-                <td style="width:50%;vertical-align:top;">
-                  <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Montant réglé</p>
-                  <p style="margin:4px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#2C1F14;">${d.amountEur}&nbsp;€</p>
-                </td>
-              </tr>
-            </table>
-
           </td>
         </tr>
-      </table>
 
-      <!-- ref -->
-      <p style="margin:0 0 32px;font-size:13px;color:#9A8070;text-align:center;">
-        Référence : <strong style="color:#2C1F14;letter-spacing:1px;">${d.ref}</strong>
-      </p>
-
-      <!-- tip block -->
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="border-left:3px solid #C4956A;background:#FBF7F4;border-radius:0 6px 6px 0;margin-bottom:40px;">
+        <!-- HERO -->
         <tr>
-          <td style="padding:18px 22px;">
-            <p style="margin:0 0 6px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Bon à savoir</p>
-            <p style="margin:0;font-size:14px;color:#6B5C4E;line-height:1.7;">
-              Prévoyez d'arriver 5 minutes en avance. Portez des vêtements confortables.
-              En cas d'empêchement, merci de nous prévenir au moins 24 h à l'avance.
+          <td class="card" style="background:#FBF6EF;border-radius:18px;padding:56px 48px 40px;text-align:center;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 28px;">
+              <tr>
+                <td width="72" height="72" align="center" style="background:#B86F4A;border-radius:50%;line-height:72px;font-family:Arial,sans-serif;font-size:36px;color:#ffffff;">&#10003;</td>
+              </tr>
+            </table>
+            <p style="margin:0 0 16px;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#8B7563;">
+              Confirmation
+            </p>
+            <h1 style="margin:0 0 12px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;font-size:42px;line-height:1.05;color:#221812;">
+              Votre bulle est&nbsp;<em style="color:#B86F4A;font-style:italic;">pos&#233;e.</em>
+            </h1>
+            <p style="margin:0 auto;max-width:420px;font-family:'Manrope',Arial,sans-serif;font-size:16px;line-height:1.55;color:#4A3A2E;">
+              Bonjour ${firstName}, &#224; tr&#232;s vite dans la bulle. Voici tout ce qu'il faut savoir pour pr&#233;parer votre s&#233;ance en douceur.
             </p>
           </td>
         </tr>
-      </table>
 
-      <p style="margin:0;font-size:15px;color:#1C1C1C;line-height:1.7;">
-        À très bientôt,<br>
-        <em style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2C1F14;">L'équipe La Bulle de Vie</em>
-      </p>
+        <tr><td height="16">&nbsp;</td></tr>
+
+        <!-- BOOKING DETAILS -->
+        <tr>
+          <td class="card" style="background:#FBF6EF;border-radius:18px;padding:40px 48px;">
+            <h2 style="margin:0 0 4px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;font-size:28px;color:#221812;line-height:1.1;">${d.serviceName}</h2>
+            ${d.specialistName ? `<p style="margin:0 0 28px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:#B86F4A;">avec ${d.specialistName}</p>` : `<p style="margin:0 0 28px;"></p>`}
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="padding:14px 0;border-top:1px solid #2218121f;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td width="60" valign="top"><p style="margin:0;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8B7563;">Date</p></td>
+                      <td valign="top"><p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#221812;">${d.date}</p></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 0;border-top:1px solid #2218121f;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td width="60" valign="top"><p style="margin:0;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8B7563;">Heure</p></td>
+                      <td valign="top"><p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#221812;">${timeDisplay}</p></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 0;border-top:1px solid #2218121f;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td width="60" valign="top"><p style="margin:0;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8B7563;">Lieu</p></td>
+                      <td valign="top">
+                        <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#221812;">${locationMain}</p>
+                        ${locationSub}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 0;border-top:1px solid #2218121f;border-bottom:1px solid #2218121f;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td width="60" valign="top"><p style="margin:0;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8B7563;">R&#233;f.</p></td>
+                      <td valign="top"><p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#221812;letter-spacing:.04em;">${d.ref}</p></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:32px auto 8px;">
+              <tr>
+                <td>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="background:#221812;border-radius:999px;">
+                        <a href="${accountHref}" style="display:inline-block;padding:14px 26px;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#ffffff;text-decoration:none;letter-spacing:.02em;">
+                          Voir mon espace &#8594;
+                        </a>
+                      </td>
+                      <td width="10">&nbsp;</td>
+                      <td style="border-radius:999px;border:1px solid #221812;">
+                        <a href="${calendarHref}" style="display:inline-block;padding:13px 24px;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#221812;text-decoration:none;letter-spacing:.02em;">
+                          Ajouter au calendrier
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:18px 0 0;text-align:center;font-family:'Manrope',Arial,sans-serif;font-size:12px;color:#8B7563;">
+              Annulation gratuite jusqu'&#224; 24h avant la s&#233;ance.
+            </p>
+          </td>
+        </tr>
+
+        <tr><td height="16">&nbsp;</td></tr>
+
+        <!-- RECEIPT -->
+        <tr>
+          <td class="card" style="background:#FBF6EF;border-radius:18px;padding:32px 48px;">
+            <p style="margin:0 0 18px;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#8B7563;">Re&#231;u</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="padding:8px 0;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">${d.serviceName}${d.durationMin ? ` &#183; ${d.durationMin} min` : ""}</td>
+                <td align="right" style="padding:8px 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;color:#221812;">${d.amountEur}</td>
+              </tr>
+              ${additionalRows}
+              ${promoRow}
+              <tr>
+                <td style="padding:18px 0 0;border-top:1px solid #221812;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#8B7563;">Total pay&#233;</td>
+                <td align="right" style="padding:18px 0 0;border-top:1px solid #221812;font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;color:#221812;">${totalAmount}</td>
+              </tr>
+            </table>
+            <p style="margin:18px 0 0;font-family:'Manrope',Arial,sans-serif;font-size:12px;color:#8B7563;">
+              ${d.paymentMethod ? `R&#233;gl&#233; par ${d.paymentMethod}.` : ""}${d.invoiceUrl ? ` <a href="${d.invoiceUrl}" style="color:#B86F4A;">T&#233;l&#233;charger la facture PDF</a>` : ""}
+            </p>
+          </td>
+        </tr>
+
+        <tr><td height="16">&nbsp;</td></tr>
+
+        <!-- PREPARE -->
+        <tr>
+          <td class="card" style="background:#FBF6EF;border-radius:18px;padding:32px 48px;">
+            <p style="margin:0 0 14px;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#8B7563;">
+              Petit rituel avant la s&#233;ance
+            </p>
+            <h3 style="margin:0 0 20px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;font-size:24px;color:#221812;">
+              Trois choses pour <em style="color:#B86F4A;">arriver l&#233;ger&#183;&#232;re.</em>
+            </h3>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td valign="top" width="40"><p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:#B86F4A;">01</p></td>
+                <td valign="top" style="padding-bottom:18px;">
+                  <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#221812;">Buvez un grand verre d'eau au r&#233;veil.</p>
+                  <p style="margin:4px 0 0;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">Le corps se pr&#233;pare mieux &#224; un soin sur une bonne hydratation.</p>
+                </td>
+              </tr>
+              <tr>
+                <td valign="top" width="40"><p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:#B86F4A;">02</p></td>
+                <td valign="top" style="padding-bottom:18px;">
+                  <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#221812;">Venez en tenue confortable.</p>
+                  <p style="margin:4px 0 0;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">Linge, huiles, ambiance &#8212; tout est pr&#233;vu sur place.</p>
+                </td>
+              </tr>
+              <tr>
+                <td valign="top" width="40"><p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:#B86F4A;">03</p></td>
+                <td valign="top">
+                  <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#221812;">Arrivez cinq minutes avant.</p>
+                  <p style="margin:4px 0 0;font-family:'Manrope',Arial,sans-serif;font-size:14px;color:#4A3A2E;">Le temps de poser ses affaires et de laisser tomber les &#233;paules.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr><td height="16">&nbsp;</td></tr>
+
+        <!-- WORD FROM SPECIALIST -->
+        <tr>
+          <td style="background:#221812;border-radius:18px;padding:40px 48px;">
+            <p style="margin:0 0 16px;font-family:'Manrope',Arial,sans-serif;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#ffffff88;">
+              ${d.specialistName ? `Un mot de ${d.specialistName.split(" ")[0]}` : "Un mot de Laurence"}
+            </p>
+            <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;line-height:1.4;color:#FBF6EF;">
+              &#171; ${specialistQuote} &#187;
+            </p>
+            <p style="margin:18px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:#D89175;font-size:16px;">
+              ${specialistSig}
+            </p>
+          </td>
+        </tr>
+
+        <tr><td height="24">&nbsp;</td></tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td align="center" style="padding:16px 32px 8px;">
+            <p style="margin:0 0 8px;font-family:'Manrope',Arial,sans-serif;font-size:12px;color:#8B7563;line-height:1.6;">
+              Besoin de modifier votre rendez-vous ?<br>
+              <a href="tel:+33625486056" style="color:#B86F4A;">06 25 48 60 56</a> &#183; <a href="mailto:contact@labulledevie.fr" style="color:#B86F4A;">contact@labulledevie.fr</a>
+            </p>
+            <p style="margin:24px 0 4px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#221812;">
+              La bulle de vie &#183; Lyon
+            </p>
+            <p style="margin:0;font-family:'Manrope',Arial,sans-serif;font-size:11px;color:#8B7563;">
+              &#169; 2026 &#183; <a href="https://labulledevie.fr/mentions" style="color:#8B7563;">Mentions</a> &#183; <a href="https://labulledevie.fr/desabonnement" style="color:#8B7563;">Se d&#233;sinscrire</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
     </td>
-  </tr>`)
+  </tr>
+</table>
+
+</body>
+</html>`
 }
 
 // ─── Specialist notification ──────────────────────────────────────────────────
