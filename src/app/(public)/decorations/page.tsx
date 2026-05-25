@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import Reveal from "@/components/animations/Reveal"
 import { useCartStore } from "@/lib/stores/useCartStore"
+import { ProductGridSkeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
 
 type Product = {
@@ -105,11 +106,7 @@ export default function DecorationsPage() {
       {/* CATALOG */}
       <section className="catalog">
         <div className="wrap">
-          {loading && (
-            <div style={{ textAlign: "center", padding: "80px 0", color: "var(--mute)", fontStyle: "italic" }}>
-              Chargement des œuvres…
-            </div>
-          )}
+          {loading && <ProductGridSkeleton count={6} />}
 
           {!loading && products.length === 0 && (
             <div style={{ textAlign: "center", padding: "80px 0" }}>

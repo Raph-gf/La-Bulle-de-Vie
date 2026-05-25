@@ -93,6 +93,113 @@ export function SlotsSkeleton({ count = 6 }: { count?: number }) {
   )
 }
 
+// ── /soins/[id] — full-page soin detail skeleton ──────────────────
+export function SoinPageSkeleton() {
+  return (
+    <>
+      {/* Dark hero */}
+      <div className="soin-hero">
+        <div className="wrap">
+          <div className="soin-hero-grid">
+            <div>
+              <Skeleton dark style={{ width: 120, height: 12, marginBottom: 20 }} />
+              <Skeleton dark style={{ width: "70%", height: 80 }} />
+              <Skeleton dark style={{ width: "50%", height: 80, marginTop: 8 }} />
+              <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+                {[90, 110, 80].map((w, i) => (
+                  <Skeleton key={i} dark style={{ width: w, height: 34, borderRadius: 99 }} />
+                ))}
+              </div>
+              <Skeleton dark style={{ width: "65%", height: 16, marginTop: 28 }} />
+              <Skeleton dark style={{ width: "50%", height: 16, marginTop: 8 }} />
+            </div>
+            {/* Aside glass card */}
+            <div style={{
+              background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", gap: 16,
+            }}>
+              {[100, 130, 90, 110].map((w, i) => (
+                <Skeleton key={i} dark style={{ width: w, height: 14 }} />
+              ))}
+              <Skeleton dark style={{ width: "100%", height: 44, borderRadius: 10, marginTop: 8 }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Facts strip */}
+      <div className="facts-row">
+        <div className="wrap">
+          <div className="facts-grid">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <Skeleton style={{ width: 32, height: 32, borderRadius: 8 }} />
+                <Skeleton style={{ width: "60%", height: 12 }} />
+                <Skeleton style={{ width: "40%", height: 11 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Body — 2-col layout */}
+      <div className="soin-body">
+        <div className="wrap">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 48 }}>
+            {/* Main content */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              {[["80%", "60%", "90%", "70%"], ["65%", "85%", "55%"]].map((lines, si) => (
+                <div key={si} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <Skeleton style={{ width: "35%", height: 28, marginBottom: 6 }} />
+                  {lines.map((w, li) => <Skeleton key={li} style={{ width: w, height: 14 }} />)}
+                </div>
+              ))}
+            </div>
+            {/* Aside */}
+            <div style={{
+              background: "#fff", border: "1px solid var(--line)",
+              borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", gap: 14,
+            }}>
+              <Skeleton style={{ width: "55%", height: 22 }} />
+              {[0, 1, 2, 3, 4].map(i => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Skeleton style={{ width: "45%", height: 13 }} />
+                  <Skeleton style={{ width: "30%", height: 13 }} />
+                </div>
+              ))}
+              <Skeleton style={{ width: "100%", height: 48, borderRadius: 10, marginTop: 8 }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── /decorations — product catalog grid (6 dark cards) ────────────
+export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="cat-grid">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="cat-card" aria-hidden style={{ opacity: 0.7 }}>
+          {/* Dark shimmer fills the card; gradient overlaid to look like the real card */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(90deg, #1a110b 25%, #2A1A10 50%, #1a110b 75%)",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 1.6s ease infinite",
+          }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Booking wizard — travel fee inline shimmer ─────────────────────
+export function TravelFeeSkeleton() {
+  return <Skeleton style={{ width: 200, height: 13, borderRadius: 4, marginTop: 6 }} />
+}
+
 // ── /compte — upcoming appointment cards ──────────────────────────
 export function AppointmentCardsSkeleton({ count = 3 }: { count?: number }) {
   return (

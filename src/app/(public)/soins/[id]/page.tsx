@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion } from "motion/react"
 import { useInView } from "motion/react"
 import Reveal from "@/components/animations/Reveal"
+import { SoinPageSkeleton } from "@/components/ui/Skeleton"
 
 // ── Types (DB format) ─────────────────────────────────────────────────
 interface DbReview {
@@ -119,13 +120,7 @@ export default function SoinPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 22, color: "var(--mute)" }}>Chargement…</p>
-      </div>
-    )
-  }
+  if (loading) return <SoinPageSkeleton />
 
   if (notFound || !data) {
     return (

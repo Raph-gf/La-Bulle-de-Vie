@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
-import { CalendarSkeleton, SlotsSkeleton } from "@/components/ui/Skeleton"
+import { CalendarSkeleton, SlotsSkeleton, TravelFeeSkeleton } from "@/components/ui/Skeleton"
 import { loadStripe } from "@stripe/stripe-js"
 import {
   Elements,
@@ -855,9 +855,7 @@ export default function BookingWizard({ serviceId, userData }: Props) {
                               setAddressCoords({ lat, lng })
                             }}
                           />
-                          {travelFeeLoading && (
-                            <span className="hint" style={{ fontStyle: "italic" }}>Calcul du déplacement…</span>
-                          )}
+                          {travelFeeLoading && <TravelFeeSkeleton />}
                           {!travelFeeLoading && travelFeeError && (
                             <span className="hint" style={{ color: "var(--terra)" }}>{travelFeeError}</span>
                           )}
