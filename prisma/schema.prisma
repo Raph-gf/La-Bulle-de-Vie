@@ -156,6 +156,7 @@ model AvailabilitySlot {
 
   appointment Appointment?
 
+  @@index([date, isBooked])
   @@map("availability_slots")
 }
 
@@ -199,6 +200,7 @@ model Appointment {
   giftCard     GiftCard?        @relation(fields: [giftCardId], references: [id])
   review       Review?
 
+  @@index([clientId, status])
   @@map("appointments")
 }
 
@@ -222,6 +224,7 @@ model Review {
   service     Service     @relation(fields: [serviceId], references: [id])
   client      Profile     @relation(fields: [clientId], references: [id])
 
+  @@index([serviceId, approved])
   @@map("reviews")
 }
 

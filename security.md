@@ -807,10 +807,10 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **C1** — Validate `isFirstVisit` against booking history
 - [ ] **C2** — Verify `pi.amount_received` against DB service price in `booking/confirm`
 - [ ] **C3** — Move promo code validation server-side; wire to `discount_codes` table
-- [ ] **C4** — Add missing `UNIQUE INDEX` for `stripePaymentIntentId` on `appointments` and `orders` tables
+- [x] **C4** — Add missing `UNIQUE INDEX` for `stripePaymentIntentId` on `appointments` and `orders` tables ✅ migration 004
 - [x] **C5** — Add Stripe refund to `orders/confirm` STOCK_ISSUE branch ✅ fixed
 - [ ] **C6** — Fix concurrent stock decrement with conditional update inside transaction
-- [ ] **C7** — Add `CHECK (stars >= 1 AND stars <= 5)` constraint to `reviews` table
+- [x] **C7** — Add `CHECK (stars >= 1 AND stars <= 5)` constraint to `reviews` table ✅ migration 004
 - [x] **H1** — Sanitise `next` param in auth callback (open redirect) ✅ fixed
 - [x] **H2** — Sanitise `redirectTo` param in login page (open redirect) ✅ fixed
 - [x] **H3** — Add role check to `GET /api/dashboard/appointments` ✅ already present
@@ -838,7 +838,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **M11** — Add auth to `GET /api/travel-fee` to prevent Nominatim proxy abuse
 - [x] **M12** — Delete `src/lib/stripe/client.ts` (misleading duplicate) ✅ deleted
 - [ ] **M13** — Add role check to `POST /api/auth/google-calendar/disconnect`
-- [ ] **M14** — Add `@@index` directives to Prisma schema (AvailabilitySlot date, Appointment clientId, Review serviceId)
+- [x] **M14** — Add `@@index` directives to Prisma schema (AvailabilitySlot date, Appointment clientId, Review serviceId) ✅ migration 004
 - [ ] **M15** — Fix travel zone selection in booking route (currently always zone 0)
 - [ ] **M16** — Audit boutique vs services price unit (euros vs cents inconsistency)
 
@@ -849,6 +849,9 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **L4** — Add warning log when `SPECIALIST_EMAIL` is missing
 - [x] **L7** — Move Nominatim contact email to env var (`NOMINATIM_CONTACT_EMAIL`) ✅ fixed
 - [ ] **L8** — Fix finances refund KPI to use DB aggregate, not `take: 20` slice
+
+### Requires Supabase Pro plan
+- [ ] **Leaked password protection** — Enable in Dashboard → Authentication → Settings → Password → "Prevent use of leaked passwords" (HaveIBeenPwned check). Unavailable on free plan — enable on upgrade.
 
 ### Infrastructure (before go-live)
 - [ ] Verify Stripe dashboard webhook points to `/api/webhooks/stripe` (not the stub)
