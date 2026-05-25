@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
+import { SheetProvider } from "@/components/ui/Sheet";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -36,6 +37,7 @@ export default function RootLayout({
     >
       <body>
         {children}
+        <SheetProvider />
         <Toaster
           position="bottom-right"
           closeButton
