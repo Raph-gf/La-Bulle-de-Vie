@@ -804,7 +804,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 ## Pre-production checklist
 
 ### Must fix before launch
-- [ ] **C1** — Validate `isFirstVisit` against booking history
+- [x] **C1** — Validate `isFirstVisit` against booking history ✅ fixed — DB check added; guests and repeat clients never get the discount
 - [x] **C2** — Verify `pi.amount_received` against DB service price in `booking/confirm` ✅ fixed
 - [ ] **C3** — Move promo code validation server-side; wire to `discount_codes` table
 - [x] **C4** — Add missing `UNIQUE INDEX` for `stripePaymentIntentId` on `appointments` and `orders` tables ✅ migration 004
@@ -817,23 +817,23 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [x] **H4** — Add role check to `GET/POST /api/dashboard/settings` ✅ already present
 - [x] **H5** — Verify `pi.amount_received` against DB product prices in `orders/confirm` ✅ fixed
 - [ ] **H6** — Add CSRF `state` param to Google Calendar OAuth flow
-- [ ] **H7** — Add Zod validation to `travelPricing` and `taxSettings` before DB write
+- [x] **H7** — Add Zod validation to `travelPricing` and `taxSettings` before DB write ✅ fixed
 - [ ] **H8** — Implement rate limiting (Upstash Redis)
 - [ ] **H9** — Include shipping fee in Stripe PaymentIntent for orders
 - [x] **H10** — Add specialist role check to Google Calendar OAuth callback ✅ fixed
-- [ ] **H11** — Add Zod validation to `POST /api/dashboard/availability` (NaN time DoS)
+- [x] **H11** — Add Zod validation to `POST /api/dashboard/availability` (NaN time DoS) ✅ fixed — lunchStart/lunchEnd validated against HH:MM regex
 - [x] **H12** — Wrap availability deleteMany + createMany in a single `$transaction` ✅ fixed
 
 ### Should fix before launch
 - [ ] **M1** — Enable RLS on `discount_codes`, `gift_cards`, `newsletter_subscribers`
-- [ ] **M2** — Add `WITH CHECK (role = 'client')` to profiles UPDATE policy
+- [x] **M2** — Add `WITH CHECK (role = 'client')` to profiles UPDATE policy ✅ migration 005 — policy split by role, prevents client → specialist escalation
 - [ ] **M3** — Bind PaymentIntent to session user in `booking/confirm`
 - [x] **M4** — Add auth to `/api/booking/status` ✅ fixed
 - [x] **M5** — Delete or replace dead stub `/api/stripe/webhook` ✅ deleted
 - [x] **M6** — Derive file extension from MIME type, not filename ✅ fixed
 - [x] **M7** — Cap cart items at 50, validate qty is integer ✅ fixed
 - [x] **M8** — Replace `dangerouslySetInnerHTML` on login page ✅ fixed
-- [ ] **M9** — Remove `SPECIALIST_EMAIL` role derivation, use `profile.role` only
+- [x] **M9** — Remove `SPECIALIST_EMAIL` role derivation, use `profile.role` only ✅ fixed — dashboard layout uses findUnique; email check stays only in auth/callback (bootstrap)
 - [x] **M10** — Add Content-Security-Policy header to `next.config.ts` ✅ fixed
 - [x] **M11** — Add auth to `GET /api/travel-fee` to prevent Nominatim proxy abuse ✅ fixed
 - [x] **M12** — Delete `src/lib/stripe/client.ts` (misleading duplicate) ✅ deleted
