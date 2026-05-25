@@ -1,5 +1,6 @@
 "use client"
-import { useState } from "react"
+import { useState, useRef } from "react"
+import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -9,20 +10,43 @@ import { contactSchema } from "@/lib/validation"
 
 type ContactFormValues = z.infer<typeof contactSchema>
 
-const faqItems = [
-  { q: "Faut‑il réserver à l'avance ?", a: "Idéalement oui — un délai de 3 à 5 jours permet d'organiser votre séance dans les meilleures conditions. Pour les soins de dernière minute, n'hésitez pas à m'appeler directement." },
-  { q: "Dois‑je apporter quelque chose pour ma séance ?", a: "Tout est prévu sur place : linges, huiles, ambiance sonore. Apportez simplement une tenue confortable — et l'envie de lâcher prise." },
-  { q: "Quelles créations proposez‑vous ?", a: "Bougies parfumées, compositions florales séchées, brumes d'ambiance, et pièces décoratives sur mesure pour votre intérieur." },
-  { q: "Quels moyens de paiement acceptez‑vous ?", a: "Carte, espèces, virement et chèques-cadeaux La bulle de vie. Le paiement se règle en ligne lors de la réservation." },
-  { q: "Proposez‑vous des séances à domicile ?", a: "Oui, sur Lyon et alentours (15 km). Un supplément déplacement de 15 à 25 € est appliqué selon la distance." },
+const SUBJECTS = [
+  { value: "reservation", ico: "✿", label: "Réservation",  desc: "Question sur un RDV, dispo, modification" },
+  { value: "soin",        ico: "♥", label: "Conseil soin", desc: "Quel rituel choisir, contre‑indications" },
+  { value: "boutique",    ico: "⌘", label: "Boutique",     desc: "Tableau sur mesure, livraison" },
+  { value: "autre",       ico: "❋", label: "Autre",        desc: "Carte cadeau, partenariat, presse…" },
+] as const
+
+const HOURS = [
+  { day: "Lundi",    hours: "9h — 19h" },
+  { day: "Mardi",    hours: "9h — 19h" },
+  { day: "Mercredi", hours: "9h — 19h" },
+  { day: "Jeudi",    hours: "11h — 20h" },
+  { day: "Vendredi", hours: "9h — 18h" },
+  { day: "Samedi",   hours: "10h — 16h" },
+  { day: "Dimanche", hours: "Fermé" },
 ]
 
-export default function ContactPage() {
-  const [openFaq, setOpenFaq] = useState(-1)
-  const [sending, setSending] = useState(false)
+// JS getDay() returns 0=Sun, 1=Mon … 6=Sat; map to our array index 0=Mon…6=Sun
+const todayIdx = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1 })()
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ContactFormValues>({
+export default function ContactPage() {
+  const [subject, setSubject] = useState<ContactFormValues["subject"]>("reservation")
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [sentEmail, setSentEmail] = useState("")
+  const [msgLen, setMsgLen] = useState(0)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
+    defaultValues: { subject: "reservation", gdpr: undefined },
   })
 
   async function onSubmit(data: ContactFormValues) {
@@ -34,158 +58,293 @@ export default function ContactPage() {
         body: JSON.stringify(data),
       })
       if (!res.ok) throw new Error()
-      toast.success("Message envoyé ! Nous vous répondrons dans les plus brefs délais.")
-      reset()
+      setSentEmail(data.email)
+      setSent(true)
+      window.scrollTo({ top: 0, behavior: "smooth" })
     } catch {
-      toast.error("Une erreur est survenue. Veuillez réessayer ou nous appeler directement.")
+      toast.error("Erreur lors de l'envoi. Veuillez réessayer ou appeler directement.")
     } finally {
       setSending(false)
     }
   }
 
-  return (
-    <>
-      {/* ── Hero / Contact section ────────────────────────────── */}
-      <section className="contact-split">
-        {/* Dark decorative panel */}
-        <div className="contact-panel" aria-hidden="true">
-          <div className="contact-panel-orb contact-panel-orb-1" />
-          <div className="contact-panel-orb contact-panel-orb-2" />
-        </div>
+  function pickSubject(val: ContactFormValues["subject"]) {
+    setSubject(val)
+    setValue("subject", val)
+  }
 
-        {/* Content */}
-        <div className="contact-right">
+  return (
+    <div className="ct-page">
+      <div className="ct-grid">
+
+        {/* ── LEFT: sidebar ─────────────────────────────────────── */}
+        <aside className="ct-side">
           <Reveal>
-            <p className="contact-eyebrow">Nous contacter</p>
-            <h1 className="contact-title">Me<br />contacter</h1>
+            <span className="eyebrow">Nous écrire</span>
+            <h1 style={{ marginTop: 14 }}>
+              Un mot, <span className="italic" style={{ color: "var(--terra)" }}>une question.</span>
+            </h1>
+            <p className="lede">
+              Je lis chaque message — et je réponds toujours sous 24h, du lundi au samedi.
+              Pour les urgences, le téléphone reste le plus simple.
+            </p>
           </Reveal>
 
-          <div className="contact-cols">
-            {/* Left — Info */}
-            <Reveal delay={0.1} className="contact-info-col">
-              <div className="contact-block">
-                <h3>Horaires</h3>
-                <p>Lun – Ven<br />9h30 – 20h30</p>
-                <p className="muted" style={{ marginTop: 10 }}>Week‑end<br />10h00 – 19h30</p>
-              </div>
-
-              <div className="contact-block">
-                <h3>Contact</h3>
-                <p>
-                  <a href="tel:+33625486056" style={{ color: "var(--ink)", textDecoration: "none" }}>
-                    06 25 48 60 56
-                  </a>
-                </p>
-                <p style={{ marginTop: 6 }}>
-                  <a href="mailto:contact@labulledevie.fr" style={{ color: "var(--ink)", textDecoration: "none" }}>
-                    contact@labulledevie.fr
-                  </a>
-                </p>
-              </div>
-
-              <div className="contact-socials">
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
-                  className="contact-social-link" aria-label="Instagram">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-                  </svg>
-                </a>
-                <a href="https://x.com" target="_blank" rel="noopener noreferrer"
-                  className="contact-social-link" aria-label="X / Twitter">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </a>
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
-                  className="contact-social-link" aria-label="Facebook">
-                  <svg width="14" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                </a>
-              </div>
-            </Reveal>
-
-            {/* Right — Form */}
-            <Reveal delay={0.2} className="contact-form-col">
-              <h3 className="contact-form-label">Formulaire</h3>
-              <form onSubmit={handleSubmit(onSubmit)} noValidate>
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="cf-name">Nom</label>
-                    <input id="cf-name" type="text" placeholder="Votre nom" {...register("name")} />
-                    {errors.name && <span className="hint" style={{ color: "var(--terra)" }}>{errors.name.message}</span>}
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cf-email">Email</label>
-                    <input id="cf-email" type="email" placeholder="votre@email.fr" {...register("email")} />
-                    {errors.email && <span className="hint" style={{ color: "var(--terra)" }}>{errors.email.message}</span>}
-                  </div>
-                  <div className="field full">
-                    <label htmlFor="cf-phone">Téléphone <span style={{ color: "var(--mute)", fontWeight: 400 }}>(optionnel)</span></label>
-                    <input id="cf-phone" type="tel" placeholder="06 00 00 00 00" {...register("phone")} />
-                    {errors.phone && <span className="hint" style={{ color: "var(--terra)" }}>{errors.phone.message}</span>}
-                  </div>
-                  <div className="field full">
-                    <label htmlFor="cf-message">Message</label>
-                    <textarea id="cf-message" rows={5} placeholder="Votre message…" {...register("message")} />
-                    {errors.message && <span className="hint" style={{ color: "var(--terra)" }}>{errors.message.message}</span>}
+          <Reveal delay={0.1}>
+            <div className="ct-meta">
+              <a className="ct-meta-row" href="tel:+33625486056">
+                <div className="ct-meta-ico">☎</div>
+                <div>
+                  <div className="ct-meta-l">Téléphone</div>
+                  <div className="ct-meta-v">06 25 48 60 56</div>
+                </div>
+              </a>
+              <a className="ct-meta-row" href="mailto:contact@labulledevie.fr">
+                <div className="ct-meta-ico">✉</div>
+                <div>
+                  <div className="ct-meta-l">E‑mail</div>
+                  <div className="ct-meta-v">contact@labulledevie.fr</div>
+                </div>
+              </a>
+              <a
+                className="ct-meta-row"
+                href="https://maps.google.com/?q=12+rue+des+Capucins+Lyon"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="ct-meta-ico">⌖</div>
+                <div>
+                  <div className="ct-meta-l">Cabinet</div>
+                  <div className="ct-meta-v">
+                    12 rue des Capucins<br />
+                    <span style={{ fontSize: 13, color: "var(--mute)" }}>69007 Lyon</span>
                   </div>
                 </div>
+              </a>
+            </div>
 
-                <div className="contact-submit">
-                  <button type="submit" className="btn btn-dark" disabled={sending}
-                    style={{ minWidth: 140, opacity: sending ? 0.7 : 1 }}>
-                    {sending ? "Envoi…" : "Envoyer"}
-                  </button>
-                </div>
-              </form>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ────────────────────────────────────────────────── */}
-      <section className="faq" id="faq">
-        <div className="wrap">
-          <div className="faq-grid">
-            <Reveal className="faq-side">
-              <p className="eyebrow">Questions fréquentes</p>
-              <h2>FAQ</h2>
-              <p>Tout ce que vous devez savoir avant votre première séance.</p>
-              <div className="faq-contact">
-                <div className="faq-contact-row">
-                  <div className="ico">✆</div>
-                  <div>
-                    <div style={{ fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 2 }}>Téléphone</div>
-                    <div>06 25 48 60 56</div>
-                  </div>
-                </div>
-                <div className="faq-contact-row">
-                  <div className="ico">@</div>
-                  <div>
-                    <div style={{ fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 2 }}>E‑mail</div>
-                    <div>contact@labulledevie.fr</div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal delay={0.1} className="faq-list">
-              {faqItems.map((item, i) => (
-                <div key={i} className={`faq-item ${openFaq === i ? "open" : ""}`}>
-                  <div className="faq-q" onClick={() => setOpenFaq(openFaq === i ? -1 : i)}>
-                    <span>{item.q}</span>
-                    <div className="plus" />
-                  </div>
-                  <div className="faq-a"><div><p>{item.a}</p></div></div>
+            <div className="ct-hours">
+              <h4>Horaires d&apos;ouverture</h4>
+              {HOURS.map((h, i) => (
+                <div
+                  key={h.day}
+                  className={`ct-hour-row${i === todayIdx ? " today" : ""}`}
+                  style={h.hours === "Fermé" ? { opacity: 0.5 } : undefined}
+                >
+                  <span>
+                    {h.day}
+                    {i === todayIdx && <> · <strong>aujourd&apos;hui</strong></>}
+                  </span>
+                  <span>{h.hours}</span>
                 </div>
               ))}
-            </Reveal>
-          </div>
+            </div>
+          </Reveal>
+        </aside>
+
+        {/* ── RIGHT: form card ──────────────────────────────────── */}
+        <div>
+          {sent ? (
+            /* ── Success state ──────────────────────────────────── */
+            <div className="ct-form-card ct-sent">
+              <div className="check">✓</div>
+              <span className="eyebrow" style={{ display: "inline-flex", justifyContent: "center" }}>Bien reçu</span>
+              <h3 style={{ marginTop: 14 }}>
+                Votre message <span className="italic" style={{ color: "var(--terra)" }}>est parti.</span>
+              </h3>
+              <p>
+                Je vous réponds sous 24h ouvrées, à l&apos;adresse{" "}
+                <strong style={{ color: "var(--terra)" }}>{sentEmail}</strong>.
+                Pour les urgences, n&apos;hésitez pas à m&apos;appeler.
+              </p>
+              <Link
+                href="/"
+                className="ct-submit"
+                style={{ maxWidth: 280, display: "inline-flex", textDecoration: "none" }}
+              >
+                <span>Retour à l&apos;accueil</span>
+                <span className="arrow">→</span>
+              </Link>
+            </div>
+          ) : (
+            /* ── Form ────────────────────────────────────────────── */
+            <div className="ct-form-card">
+              <span className="eyebrow">Formulaire</span>
+              <h2 style={{ marginTop: 8 }}>
+                Écrivez‑moi{" "}
+                <span className="italic" style={{ color: "var(--terra)" }}>en quelques mots.</span>
+              </h2>
+              <p className="sub">
+                Plus c&apos;est précis, mieux je peux vous aider. Vous recevrez un accusé de réception immédiat.
+              </p>
+
+              {/* Subject picker */}
+              <p style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 12, fontWeight: 500 }}>
+                Sujet du message
+              </p>
+              <div className="subj-pick">
+                {SUBJECTS.map(s => (
+                  <div
+                    key={s.value}
+                    className={`subj-opt${subject === s.value ? " selected" : ""}`}
+                    onClick={() => pickSubject(s.value)}
+                    role="radio"
+                    aria-checked={subject === s.value}
+                    tabIndex={0}
+                    onKeyDown={e => e.key === "Enter" && pickSubject(s.value)}
+                  >
+                    <div className="subj-ico">{s.ico}</div>
+                    <div>
+                      <div className="subj-nm">{s.label}</div>
+                      <div className="subj-desc">{s.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmit)} noValidate>
+                <div className="ct-form-grid">
+
+                  <div className="ct-field">
+                    <label htmlFor="ct-first">Prénom</label>
+                    <input
+                      id="ct-first"
+                      type="text"
+                      autoComplete="given-name"
+                      className={errors.firstName ? "error" : ""}
+                      {...register("firstName")}
+                    />
+                    {errors.firstName && <span className="ct-field-err">{errors.firstName.message}</span>}
+                  </div>
+
+                  <div className="ct-field">
+                    <label htmlFor="ct-last">Nom</label>
+                    <input
+                      id="ct-last"
+                      type="text"
+                      autoComplete="family-name"
+                      className={errors.lastName ? "error" : ""}
+                      {...register("lastName")}
+                    />
+                    {errors.lastName && <span className="ct-field-err">{errors.lastName.message}</span>}
+                  </div>
+
+                  <div className="ct-field">
+                    <label htmlFor="ct-email">E‑mail</label>
+                    <input
+                      id="ct-email"
+                      type="email"
+                      autoComplete="email"
+                      className={errors.email ? "error" : ""}
+                      {...register("email")}
+                    />
+                    {errors.email
+                      ? <span className="ct-field-err">{errors.email.message}</span>
+                      : <span className="ct-field-hint"><span>Pour ma réponse</span></span>
+                    }
+                  </div>
+
+                  <div className="ct-field">
+                    <label htmlFor="ct-phone">
+                      Téléphone{" "}
+                      <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--mute)", fontWeight: 400 }}>
+                        (facultatif)
+                      </span>
+                    </label>
+                    <input
+                      id="ct-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      {...register("phone")}
+                    />
+                  </div>
+
+                  <div className="ct-field full">
+                    <label htmlFor="ct-msg">Votre message</label>
+                    <textarea
+                      id="ct-msg"
+                      placeholder="Dites‑moi ce dont vous avez besoin — je vous réponds vite."
+                      className={errors.message ? "error" : ""}
+                      {...register("message", {
+                        onChange: e => setMsgLen(e.target.value.length),
+                      })}
+                    />
+                    <div className="ct-field-hint">
+                      <span>
+                        {errors.message
+                          ? <span style={{ color: "#B65555" }}>{errors.message.message}</span>
+                          : "Soyez aussi précis·e que possible"
+                        }
+                      </span>
+                      <span className={`cnt${msgLen > 720 ? " warn" : ""}`}>{msgLen} / 800</span>
+                    </div>
+                  </div>
+
+                  <div className="ct-field full">
+                    <label>
+                      Joindre une photo{" "}
+                      <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--mute)", fontWeight: 400 }}>
+                        (facultatif)
+                      </span>
+                    </label>
+                    <div
+                      className="ct-attach"
+                      onClick={() => fileRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === "Enter" && fileRef.current?.click()}
+                    >
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={e => setFileName(e.target.files?.[0]?.name ?? null)}
+                      />
+                      <span className="ct-attach-clip">⌬</span>
+                      <span>
+                        {fileName
+                          ? `✓ ${fileName}`
+                          : "Glisser un fichier ou cliquer pour parcourir · JPG/PNG · 5 Mo max"
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  <label className="ct-check-row" style={{ gridColumn: "span 2" }}>
+                    <input type="checkbox" {...register("gdpr")} />
+                    <span>
+                      J&apos;accepte que mes informations soient utilisées pour me répondre. Elles ne seront jamais partagées.{" "}
+                      <a href="#">En savoir plus</a>.
+                    </span>
+                  </label>
+                  {errors.gdpr && (
+                    <span className="ct-field-err" style={{ gridColumn: "span 2", marginTop: -8 }}>
+                      {errors.gdpr.message}
+                    </span>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="ct-submit"
+                    style={{ gridColumn: "span 2" }}
+                    disabled={sending}
+                  >
+                    <span>{sending ? "Envoi en cours…" : "Envoyer mon message"}</span>
+                    {!sending && <span className="arrow">→</span>}
+                  </button>
+                </div>
+
+                <p className="ct-legal">
+                  En soumettant, vous acceptez nos{" "}
+                  <a href="#">CGU</a> et notre <a href="#">politique de confidentialité</a>.
+                </p>
+              </form>
+            </div>
+          )}
         </div>
-      </section>
-    </>
+
+      </div>
+    </div>
   )
 }

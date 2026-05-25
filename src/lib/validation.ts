@@ -87,10 +87,13 @@ export const reviewSchema = z.object({
 // ── Contact form ──────────────────────────────────────────────────────────────
 
 export const contactSchema = z.object({
-  name: nameSchema,
+  firstName: nameSchema,
+  lastName: nameSchema,
   email: emailSchema,
   phone: phoneSchema,
-  message: text(2000, 10),
+  subject: z.enum(["reservation", "soin", "boutique", "autre"]),
+  message: text(800, 10),
+  gdpr: z.literal(true, { message: "Vous devez accepter les conditions" }),
 })
 
 // ── Newsletter ────────────────────────────────────────────────────────────────

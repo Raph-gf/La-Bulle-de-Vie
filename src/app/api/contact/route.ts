@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { contactSchema } from "@/lib/validation"
 import { sendContactMessage } from "@/lib/resend/emails"
 
+const SUBJECT_LABELS: Record<string, string> = {
+  reservation: "Réservation",
+  soin: "Conseil soin",
+  boutique: "Boutique",
+  autre: "Autre",
+}
+
 export async function POST(req: NextRequest) {
   let body: unknown
   try {
@@ -18,7 +25,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { name, email, phone, message } = result.data
+  const { firstName, lastName, email, phone, subject, message } = result.data
   const specialistEmail = process.env.SPECIALIST_EMAIL
 
   if (!specialistEmail) {
@@ -28,9 +35,10 @@ export async function POST(req: NextRequest) {
 
   try {
     await sendContactMessage(specialistEmail, {
-      senderName: name,
+      senderName: `${firstName} ${lastName}`,
       senderEmail: email,
       senderPhone: phone || undefined,
+      subject: SUBJECT_LABELS[subject] ?? subject,
       message,
     })
   } catch (err) {

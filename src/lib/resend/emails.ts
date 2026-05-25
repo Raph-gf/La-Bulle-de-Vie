@@ -297,6 +297,7 @@ export async function sendContactMessage(to: string, data: {
   senderName: string
   senderEmail: string
   senderPhone?: string
+  subject?: string
   message: string
 }): Promise<void> {
   const client = getResend()
@@ -306,6 +307,13 @@ export async function sendContactMessage(to: string, data: {
     ? `<tr><td style="padding:0 12px 0 0;width:50%;vertical-align:top;">
         <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Téléphone</p>
         <p style="margin:4px 0 0;font-size:15px;color:#2C1F14;">${data.senderPhone}</p>
+      </td></tr>`
+    : ""
+
+  const subjectRow = data.subject
+    ? `<tr><td style="padding:0 12px 0 0;vertical-align:top;">
+        <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C4956A;">Sujet</p>
+        <p style="margin:4px 0 0;font-size:15px;color:#2C1F14;">${data.subject}</p>
       </td></tr>`
     : ""
 
@@ -331,6 +339,7 @@ export async function sendContactMessage(to: string, data: {
                 ${labelCell("Email", `<a href="mailto:${data.senderEmail}" style="color:#2C1F14;">${data.senderEmail}</a>`)}
               </tr>
               ${phoneRow}
+              ${subjectRow}
             </table>
           </td>
         </tr>
@@ -352,7 +361,7 @@ export async function sendContactMessage(to: string, data: {
     from: FROM,
     to,
     replyTo: data.senderEmail,
-    subject: `Message de ${data.senderName}`,
+    subject: `[${data.subject ?? "Contact"}] Message de ${data.senderName}`,
     html,
   })
 
