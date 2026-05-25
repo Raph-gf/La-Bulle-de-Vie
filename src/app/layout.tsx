@@ -37,16 +37,14 @@ export default function RootLayout({
       <body>
         {children}
         <Toaster
-          position="top-right"
-          richColors
+          position="bottom-right"
           closeButton
           duration={4000}
-          toastOptions={{
-            style: {
-              fontFamily: "var(--font-sans, Manrope, sans-serif)",
-              fontSize: "14px",
-              borderRadius: "12px",
-            },
+          icons={{
+            success: <span style={{ fontFamily: "var(--font-serif,'Cormorant Garamond',Georgia,serif)", fontStyle: "italic" }}>✓</span>,
+            error:   <span style={{ fontFamily: "var(--font-serif,'Cormorant Garamond',Georgia,serif)", fontStyle: "italic" }}>!</span>,
+            info:    <span style={{ fontFamily: "var(--font-serif,'Cormorant Garamond',Georgia,serif)", fontStyle: "italic" }}>i</span>,
+            warning: <span style={{ fontFamily: "var(--font-serif,'Cormorant Garamond',Georgia,serif)", fontStyle: "italic" }}>!</span>,
           }}
         />
       </body>

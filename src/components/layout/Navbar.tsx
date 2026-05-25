@@ -17,8 +17,11 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const [userInitial, setUserInitial] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const { count, open: openCart } = useCartStore()
-  const cartCount = count()
+  const cartCount = mounted ? count() : 0
+
+  useEffect(() => { setMounted(true) }, [])
 
   // Pages whose hero is dark — nav links should be white when unscrolled
   const darkHero =

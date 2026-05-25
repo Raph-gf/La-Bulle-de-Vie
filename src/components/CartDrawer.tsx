@@ -5,9 +5,12 @@ import { useCartStore } from "@/lib/stores/useCartStore"
 
 export default function CartDrawer() {
   const { items, isOpen, close, open, remove, updateQty, total, count } = useCartStore()
-  const n = count()
+  const [mounted, setMounted] = useState(false)
+  const n = mounted ? count() : 0
   const [bump, setBump] = useState(false)
-  const prevN = useRef(n)
+  const prevN = useRef(0)
+
+  useEffect(() => { setMounted(true) }, [])
 
   // Trigger badge bump animation whenever the count increases
   useEffect(() => {
@@ -19,7 +22,9 @@ export default function CartDrawer() {
     prevN.current = n
   }, [n])
 
-  const pillVisible = n > 0 && !isOpen
+  const safeItems = mounted ? items : []
+  const safeOpen = mounted ? isOpen : false
+  const pillVisible = n > 0 && !safeOpen
 
   return (
     <>
@@ -38,10 +43,10 @@ export default function CartDrawer() {
       </button>
 
       {/* Backdrop */}
-      <div className={`cart-backdrop${isOpen ? " show" : ""}`} onClick={close} aria-hidden />
+      <div className={`cart-backdrop${safeOpen ? " show" : ""}`} onClick={close} aria-hidden />
 
       {/* Slide-in drawer */}
-      <aside className={`cart-drawer${isOpen ? " open" : ""}`} aria-label="Panier">
+      <aside className={`cart-drawer${safeOpen ? " open" : ""}`} aria-label="Panier">
         {/* Header */}
         <div className="cd-head">
           <div>
@@ -56,7 +61,7 @@ export default function CartDrawer() {
         </div>
 
         {/* Body */}
-        {items.length === 0 ? (
+        {safeItems.length === 0 ? (
           <div className="cd-empty">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" style={{ color: "var(--mute)", marginBottom: 16 }}>
               <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -71,7 +76,7 @@ export default function CartDrawer() {
         ) : (
           <>
             <div className="cd-items">
-              {items.map(item => (
+              {safeItems.map(item => (
                 <div key={item.id} className="cd-item">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} className="cd-thumb" />
