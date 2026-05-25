@@ -2424,7 +2424,7 @@ footer{background: var(--paper); padding: 100px 0 40px; border-top:1px solid var
 /* ── Sidebar ──────────────────────────────────────────────────────── */
 .ct-side{position:sticky; top:100px}
 .ct-side h1{font-size:clamp(40px,4.5vw,60px); line-height:1.02; margin-bottom:14px}
-.ct-side > .lede{color:var(--mute); font-size:15.5px; line-height:1.6; margin-bottom:40px}
+.ct-side .lede{color:var(--mute); font-size:15.5px; line-height:1.6; margin-bottom:48px}
 
 .ct-meta{display:flex; flex-direction:column; gap:14px}
 .ct-meta-row{
