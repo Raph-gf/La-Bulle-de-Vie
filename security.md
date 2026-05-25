@@ -825,9 +825,9 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [x] **H12** — Wrap availability deleteMany + createMany in a single `$transaction` ✅ fixed
 
 ### Should fix before launch
-- [ ] **M1** — Enable RLS on `discount_codes`, `gift_cards`, `newsletter_subscribers`
+- [x] **M1** — Enable RLS on `discount_codes`, `gift_cards`, `newsletter_subscribers` ✅ migration 006
 - [x] **M2** — Add `WITH CHECK (role = 'client')` to profiles UPDATE policy ✅ migration 005 — policy split by role, prevents client → specialist escalation
-- [ ] **M3** — Bind PaymentIntent to session user in `booking/confirm`
+- [x] **M3** — Bind PaymentIntent to session user in `booking/confirm` ✅ fixed — session vs PI clientId checked
 - [x] **M4** — Add auth to `/api/booking/status` ✅ fixed
 - [x] **M5** — Delete or replace dead stub `/api/stripe/webhook` ✅ deleted
 - [x] **M6** — Derive file extension from MIME type, not filename ✅ fixed
@@ -844,11 +844,11 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 
 ### Polish / good hygiene
 - [x] **L1** — Remove PII from `console.log` in API routes ✅ fixed
-- [ ] **L2** — Extract `requireSpecialist` to shared `src/lib/auth.ts` (also fixes L6 401 vs 403)
+- [x] **L2** — Extract `requireSpecialist` to shared `src/lib/auth.ts` ✅ fixed — 12 duplicate copies removed
 - [x] **L3** — Validate date params before passing to Prisma ✅ fixed
-- [ ] **L4** — Add warning log when `SPECIALIST_EMAIL` is missing
+- [x] **L4** — Add warning log when `SPECIALIST_EMAIL` is missing ✅ fixed
 - [x] **L7** — Move Nominatim contact email to env var (`NOMINATIM_CONTACT_EMAIL`) ✅ fixed
-- [ ] **L8** — Fix finances refund KPI to use DB aggregate, not `take: 20` slice
+- [x] **L8** — Fix finances refund KPI ✅ fixed — dedicated aggregate query replaces take:20 slice to use DB aggregate, not `take: 20` slice
 
 ### Requires Supabase Pro plan
 - [ ] **Leaked password protection** — Enable in Dashboard → Authentication → Settings → Password → "Prevent use of leaked passwords" (HaveIBeenPwned check). Unavailable on free plan — enable on upgrade.
