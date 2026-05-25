@@ -620,20 +620,49 @@ Full audit documented in `security.md`. Three passes: manual analysis + security
 - ⬜ **H6** — Google Calendar OAuth missing CSRF `state` parameter
 - ⬜ **H8** — Rate limiting (Upstash Redis) — `@upstash/ratelimit` on auth, booking, contact routes
 
-#### Migrations to run in Supabase SQL editor
-- ⬜ `supabase/migrations/004_indexes_and_constraints.sql`
-- ⬜ `supabase/migrations/005_profiles_role_policy.sql`
-- ⬜ `supabase/migrations/006_rls_missing_tables.sql`
+#### Migrations applied to Supabase ✅
+- ✅ `supabase/migrations/004_indexes_and_constraints.sql` — applied 2026-05-25
+- ✅ `supabase/migrations/005_profiles_role_policy.sql` — applied 2026-05-25
+- ✅ `supabase/migrations/006_rls_missing_tables.sql` — applied 2026-05-25
 
-### Still to do
-- ⬜ Password reset form — `/login?mode=reset` (after clicking email link, let user enter new password via `updateUser`)
+### Up next — Phase 8 priorities (session 2026-05-26)
+
+#### 1. Password reset ⬜ (blocking — users with email/password have no recovery path)
+- `/login?mode=reset` already shows a "new password" form — wire it to `supabase.auth.updateUser({ password })`
+- The reset link from `resetPasswordForEmail` lands on `/auth/callback?next=/login?mode=reset` — route already handles the code exchange
+
+#### 2. `/compte` data wiring ⬜ (core feature — account space is currently dead)
+- **Mon espace** — real next appointment + countdown target from DB
+- **Rendez-vous** — live appointments from `GET /api/user/appointments`
+- **Historique** — past appointments with review submission form (`POST /api/reviews`)
+- **Profil & sécurité** — save changes to `profiles` table (name, phone) + `supabase.auth.updateUser` for email/password
+- **Stats** — total séances, avg rating, loyalty bar from real appointment count
+
+#### 3. Cancellation / refund flow ⬜ (blocking — clients have no way to cancel)
+- Client cancels from `/compte#appts` → `POST /api/booking/cancel`
+- Cancellation policy: full refund >48h, 50% refund 24–48h, no refund <24h
+- Stripe `refunds.create()` + update `appointment.refundStatus`
+- Slot freed (`isBooked: false`) on cancellation
+- Email confirmation to client
+
+#### 4. 24h appointment reminder cron ⬜
+- `GET /api/cron/reminders` — already has the email function (`sendAppointmentReminder`)
+- Secure with `CRON_SECRET` header check
+- `vercel.json` cron schedule: daily at 08:00
+- Query: `slot.date = tomorrow AND status = confirmed AND prefs.clientReminder24h = true`
+
+#### 5. Security — remaining pre-deploy items ⬜
+- **H6** — Google Calendar OAuth: generate `state` UUID, store in short-lived cookie, verify on callback (~30 min)
+- **C3** — Promo codes: move `PROMOS` table to DB, add `POST /api/discount/validate`, apply discount server-side in `POST /api/orders`
+- **H8** — Rate limiting: Upstash Redis + `@upstash/ratelimit` on login, booking, contact (set up Upstash account first)
+
+### Still to do (other)
 - ✅ Profile auto-created in `profiles` table on signup (Supabase DB trigger) — see Phase 3
 - ✅ Review submission API — `POST /api/reviews` created (see Phase 5); still need the frontend form in `/compte#history`
-- ⬜ Specialist reply display in `/compte#history` — current accordion works but the visual style needs revisiting (Raphael not happy with it — redo with a different approach)
+- ⬜ Specialist reply display in `/compte#history` — visual style needs revisiting
 - ⬜ Gift card purchase + redemption flow
 - ⬜ Favorites — store in DB, toggle from `/soins/[id]` page
 - ⬜ 404 page
-- ⬜ `/compte` data wiring (see Phase 3 deferred list above)
 
 ---
 
@@ -644,10 +673,29 @@ Full audit documented in `security.md`. Three passes: manual analysis + security
 - ⬜ Mobile responsiveness audit (all pages)
 - ⬜ Accessibility audit (aria labels, keyboard nav, contrast)
 - ⬜ Performance audit (image optimization, lazy loading)
-- ⬜ Security audit (RLS policies, API route guards, input sanitization)
 - ⬜ Deploy to Vercel
 - ⬜ Connect custom domain
 - ⬜ Set up Stripe production keys + webhook endpoint
+
+---
+
+## Phase 10 — Async messaging (post-deploy, Pro tier feature)
+
+**Idea:** client ↔ specialist messaging system — clients can ask pre-booking questions, specialist can follow up after sessions.
+
+**Why async, not live chat:** specialist is hands-on in sessions all day and can't monitor a live chat window. Async threads (inbox model, like email) match the actual workflow. A live chat bubble that takes 4 hours to respond is worse UX than no chat at all.
+
+**Implementation approach (when ready):**
+- `messages` table: `id`, `threadId`, `senderId`, `body`, `createdAt`, `readAt`
+- `threads` table: `id`, `clientId`, `subject`, `lastMessageAt`
+- **Supabase Realtime** channels for WebSocket subscriptions — already in the stack, no extra infra
+- Client inbox in `/compte#messages` — threads list + message view
+- Specialist inbox in `/dashboard/messages` — same model
+- Push notification (OneSignal) to specialist on new message
+- Email fallback if specialist hasn't read within 2h (Resend)
+- GDPR note: message data = personal data — need retention policy + delete-on-account-delete cascade
+
+**Why defer:** core booking flow (cancellations, account wiring, reminders) must be solid first. Good candidate for a "Pro" tier differentiator when positioning for SaaS resale.
 
 ---
 
@@ -667,11 +715,11 @@ Full audit documented in `security.md`. Three passes: manual analysis + security
 | `src/app/(client)/booking/page.tsx` | Generic booking (no pre-selection) |
 | `src/app/(client)/booking/[serviceId]/page.tsx` | Pre-selected soin booking |
 
-## Current phase: Phase 8 — Security & polish
+## Current phase: Phase 8 — Features + security close-out
 ## Last session: 2026-05-25
-## Phase 7 complete ✅ — Full e-commerce flow: Décorations catalog wired, Zustand cart, /panier page, Stripe checkout, order confirmation email + page.
-## Security sprint complete ✅ — 32/35 issues fixed across 5 batches. Remaining: C3 (promo codes server-side), H6 (GCal OAuth CSRF), H8 (rate limiting). 3 SQL migrations still need to be run in Supabase dashboard (004, 005, 006).
-## Next step: C3 + H6 to close the security sprint → then features (password reset, /compte data wiring, cancellation flow)
+## Security sprint complete ✅ — 32/35 issues fixed. All 3 pending migrations applied to Supabase.
+## Next session (2026-05-26): password reset → /compte data wiring → cancellation flow → 24h reminder cron → H6/C3/H8 security close-out
+## Phase 10 scoped: async client↔specialist messaging via Supabase Realtime (post-deploy Pro tier feature)
 
 ---
 
