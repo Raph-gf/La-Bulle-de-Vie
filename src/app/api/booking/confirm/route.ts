@@ -54,6 +54,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Métadonnées PaymentIntent manquantes" }, { status: 422 })
     }
 
+    // Verify amount received matches expected price from DB — prevents a PI created
+    // for a different amount from confirming a full-price service
+    const serviceForCheck = await prisma.service.findUnique({ where: { id: serviceId }, select: { price: true } })
+    if (!serviceForCheck) {
+      return NextResponse.json({ error: "Service introuvable" }, { status: 422 })
+    }
+    const expectedAmount =
+      serviceForCheck.price
+      - parseInt(discountAmount ?? "0")
+      + parseInt(travelFeeInCents ?? "0")
+    if (pi.amount_received < expectedAmount - 10) {
+      await stripe.refunds.create({ payment_intent: pi.id, reason: "fraudulent" })
+      return NextResponse.json({ error: "Montant invalide" }, { status: 400 })
+    }
+
     // Atomic transaction: check slot free → mark booked → create appointment
     let appointment
     try {

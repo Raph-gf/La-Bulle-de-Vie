@@ -805,7 +805,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 
 ### Must fix before launch
 - [ ] **C1** — Validate `isFirstVisit` against booking history
-- [ ] **C2** — Verify `pi.amount_received` against DB service price in `booking/confirm`
+- [x] **C2** — Verify `pi.amount_received` against DB service price in `booking/confirm` ✅ fixed
 - [ ] **C3** — Move promo code validation server-side; wire to `discount_codes` table
 - [x] **C4** — Add missing `UNIQUE INDEX` for `stripePaymentIntentId` on `appointments` and `orders` tables ✅ migration 004
 - [x] **C5** — Add Stripe refund to `orders/confirm` STOCK_ISSUE branch ✅ fixed
@@ -815,12 +815,12 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [x] **H2** — Sanitise `redirectTo` param in login page (open redirect) ✅ fixed
 - [x] **H3** — Add role check to `GET /api/dashboard/appointments` ✅ already present
 - [x] **H4** — Add role check to `GET/POST /api/dashboard/settings` ✅ already present
-- [ ] **H5** — Verify `pi.amount_received` against DB product prices in `orders/confirm`
+- [x] **H5** — Verify `pi.amount_received` against DB product prices in `orders/confirm` ✅ fixed
 - [ ] **H6** — Add CSRF `state` param to Google Calendar OAuth flow
 - [ ] **H7** — Add Zod validation to `travelPricing` and `taxSettings` before DB write
 - [ ] **H8** — Implement rate limiting (Upstash Redis)
 - [ ] **H9** — Include shipping fee in Stripe PaymentIntent for orders
-- [ ] **H10** — Add specialist role check to Google Calendar OAuth callback
+- [x] **H10** — Add specialist role check to Google Calendar OAuth callback ✅ fixed
 - [ ] **H11** — Add Zod validation to `POST /api/dashboard/availability` (NaN time DoS)
 - [x] **H12** — Wrap availability deleteMany + createMany in a single `$transaction` ✅ fixed
 
@@ -828,16 +828,16 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **M1** — Enable RLS on `discount_codes`, `gift_cards`, `newsletter_subscribers`
 - [ ] **M2** — Add `WITH CHECK (role = 'client')` to profiles UPDATE policy
 - [ ] **M3** — Bind PaymentIntent to session user in `booking/confirm`
-- [ ] **M4** — Add auth to `/api/booking/status`
+- [x] **M4** — Add auth to `/api/booking/status` ✅ fixed
 - [x] **M5** — Delete or replace dead stub `/api/stripe/webhook` ✅ deleted
 - [ ] **M6** — Derive file extension from MIME type, not filename
 - [ ] **M7** — Cap cart items at 50, validate qty is integer
 - [x] **M8** — Replace `dangerouslySetInnerHTML` on login page ✅ fixed
 - [ ] **M9** — Remove `SPECIALIST_EMAIL` role derivation, use `profile.role` only
 - [ ] **M10** — Add Content-Security-Policy header to `next.config.ts`
-- [ ] **M11** — Add auth to `GET /api/travel-fee` to prevent Nominatim proxy abuse
+- [x] **M11** — Add auth to `GET /api/travel-fee` to prevent Nominatim proxy abuse ✅ fixed
 - [x] **M12** — Delete `src/lib/stripe/client.ts` (misleading duplicate) ✅ deleted
-- [ ] **M13** — Add role check to `POST /api/auth/google-calendar/disconnect`
+- [x] **M13** — Add role check to `POST /api/auth/google-calendar/disconnect` ✅ fixed
 - [x] **M14** — Add `@@index` directives to Prisma schema (AvailabilitySlot date, Appointment clientId, Review serviceId) ✅ migration 004
 - [ ] **M15** — Fix travel zone selection in booking route (currently always zone 0)
 - [ ] **M16** — Audit boutique vs services price unit (euros vs cents inconsistency)

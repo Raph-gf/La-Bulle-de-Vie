@@ -20,6 +20,9 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.redirect(new URL("/login", req.url))
 
+    const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } })
+    if (profile?.role !== "specialist") return NextResponse.redirect(new URL("/login", req.url))
+
     const token = await exchangeCode(code)
 
     await prisma.profile.update({

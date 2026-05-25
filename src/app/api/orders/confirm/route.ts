@@ -48,6 +48,17 @@ export async function POST(req: NextRequest) {
       select: { id: true, price: true, name: true, stock: true },
     })
 
+    // Verify amount received matches expected total from current DB prices — prevents
+    // a PI created for a lower amount from confirming a higher-value order
+    const expectedTotal = rawItems.reduce((sum, line) => {
+      const p = products.find(p => p.id === line.id)
+      return sum + (p ? p.price * line.qty : 0)
+    }, 0)
+    if (pi.amount_received < expectedTotal - 10) {
+      await stripe.refunds.create({ payment_intent: paymentIntentId, reason: "fraudulent" })
+      return NextResponse.json({ error: "Montant invalide" }, { status: 400 })
+    }
+
     // Atomic: decrement stock + create order + create items
     let order
     try {
