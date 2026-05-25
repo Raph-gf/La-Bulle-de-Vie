@@ -809,7 +809,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **C3** — Move promo code validation server-side; wire to `discount_codes` table
 - [x] **C4** — Add missing `UNIQUE INDEX` for `stripePaymentIntentId` on `appointments` and `orders` tables ✅ migration 004
 - [x] **C5** — Add Stripe refund to `orders/confirm` STOCK_ISSUE branch ✅ fixed
-- [ ] **C6** — Fix concurrent stock decrement with conditional update inside transaction
+- [x] **C6** — Fix concurrent stock decrement ✅ atomic conditional updateMany(WHERE stock >= qty) — race condition closed
 - [x] **C7** — Add `CHECK (stars >= 1 AND stars <= 5)` constraint to `reviews` table ✅ migration 004
 - [x] **H1** — Sanitise `next` param in auth callback (open redirect) ✅ fixed
 - [x] **H2** — Sanitise `redirectTo` param in login page (open redirect) ✅ fixed
@@ -819,7 +819,7 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [ ] **H6** — Add CSRF `state` param to Google Calendar OAuth flow
 - [x] **H7** — Add Zod validation to `travelPricing` and `taxSettings` before DB write ✅ fixed
 - [ ] **H8** — Implement rate limiting (Upstash Redis)
-- [ ] **H9** — Include shipping fee in Stripe PaymentIntent for orders
+- [x] **H9** — Include shipping fee in Stripe PaymentIntent for orders ✅ server-side SHIPPING_FEES table, stored in PI metadata
 - [x] **H10** — Add specialist role check to Google Calendar OAuth callback ✅ fixed
 - [x] **H11** — Add Zod validation to `POST /api/dashboard/availability` (NaN time DoS) ✅ fixed — lunchStart/lunchEnd validated against HH:MM regex
 - [x] **H12** — Wrap availability deleteMany + createMany in a single `$transaction` ✅ fixed
@@ -839,8 +839,8 @@ prisma.$queryRaw(`SELECT * FROM appointments WHERE id = '${id}'`)
 - [x] **M12** — Delete `src/lib/stripe/client.ts` (misleading duplicate) ✅ deleted
 - [x] **M13** — Add role check to `POST /api/auth/google-calendar/disconnect` ✅ fixed
 - [x] **M14** — Add `@@index` directives to Prisma schema (AvailabilitySlot date, Appointment clientId, Review serviceId) ✅ migration 004
-- [ ] **M15** — Fix travel zone selection in booking route (currently always zone 0)
-- [ ] **M16** — Audit boutique vs services price unit (euros vs cents inconsistency)
+- [x] **M15** — Fix travel zone selection in booking route ✅ geocodes client address, uses computeTravelFee
+- [x] **M16** — Price unit inconsistency boutique vs services ✅ services API now multiplies server-side; removed frontend Math.round
 
 ### Polish / good hygiene
 - [x] **L1** — Remove PII from `console.log` in API routes ✅ fixed
