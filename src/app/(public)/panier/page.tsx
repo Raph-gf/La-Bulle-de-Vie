@@ -217,7 +217,7 @@ export default function PanierPage() {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: safeItems.map(i => ({ id: i.id, quantity: i.quantity })) }),
+        body: JSON.stringify({ items: safeItems.map(i => ({ id: i.id, quantity: i.quantity })), shippingMethod }),
       })
       const body = await res.json()
       if (!res.ok) {

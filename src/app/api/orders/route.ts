@@ -5,12 +5,20 @@ import { createClient } from "@/lib/supabase/server"
 
 type CartLine = { id: string; quantity: number }
 
+// Server-side shipping table — must stay in sync with SHIPPING_OPTS in panier/page.tsx
+const SHIPPING_FEES: Record<string, number> = {
+  standard: 650,
+  express: 1490,
+  pickup: 0,
+}
+
 // POST /api/orders
 // Creates a Stripe PaymentIntent for a cart.
 // Prices are always read from the DB — client values are never trusted.
+// shippingMethod is validated against the server-side table above.
 export async function POST(req: NextRequest) {
   try {
-    const { items }: { items: CartLine[] } = await req.json()
+    const { items, shippingMethod }: { items: CartLine[]; shippingMethod?: string } = await req.json()
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Panier vide" }, { status: 400 })
@@ -38,11 +46,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Validate and resolve shipping fee server-side — client value is never trusted
+    const resolvedMethod = shippingMethod && shippingMethod in SHIPPING_FEES ? shippingMethod : "standard"
+    const shippingFee = SHIPPING_FEES[resolvedMethod]
+
     // Calculate total from server-side prices
-    const total = items.reduce((sum, line) => {
+    const productsTotal = items.reduce((sum, line) => {
       const p = products.find(p => p.id === line.id)!
       return sum + p.price * line.quantity
     }, 0)
+    const total = productsTotal + shippingFee
 
     if (total < 50) {
       return NextResponse.json({ error: "Montant minimum non atteint" }, { status: 422 })
@@ -60,6 +73,8 @@ export async function POST(req: NextRequest) {
         type: "order",
         clientId: user?.id ?? "",
         items: JSON.stringify(items.map(l => ({ id: l.id, qty: l.quantity }))),
+        shippingMethod: resolvedMethod,
+        shippingFee: String(shippingFee),
       },
     })
 

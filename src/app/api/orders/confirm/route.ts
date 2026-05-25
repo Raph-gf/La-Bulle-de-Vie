@@ -48,12 +48,14 @@ export async function POST(req: NextRequest) {
       select: { id: true, price: true, name: true, stock: true },
     })
 
+    const shippingFee = parseInt(pi.metadata.shippingFee ?? "650")
+
     // Verify amount received matches expected total from current DB prices — prevents
     // a PI created for a lower amount from confirming a higher-value order
     const expectedTotal = rawItems.reduce((sum, line) => {
       const p = products.find(p => p.id === line.id)
       return sum + (p ? p.price * line.qty : 0)
-    }, 0)
+    }, 0) + shippingFee
     if (pi.amount_received < expectedTotal - 10) {
       await stripe.refunds.create({ payment_intent: paymentIntentId, reason: "fraudulent" })
       return NextResponse.json({ error: "Montant invalide" }, { status: 400 })
@@ -64,12 +66,13 @@ export async function POST(req: NextRequest) {
     try {
       order = await prisma.$transaction(async (tx) => {
         for (const line of rawItems) {
-          const p = products.find(p => p.id === line.id)
-          if (!p || p.stock < line.qty) throw new Error("STOCK_ISSUE")
-          await tx.product.update({
-            where: { id: line.id },
+          // Atomic conditional decrement — if stock was already claimed by a
+          // concurrent request, count === 0 and we abort the entire transaction.
+          const result = await tx.product.updateMany({
+            where: { id: line.id, stock: { gte: line.qty } },
             data: { stock: { decrement: line.qty } },
           })
+          if (result.count === 0) throw new Error("STOCK_ISSUE")
         }
 
         return tx.order.create({
@@ -78,7 +81,7 @@ export async function POST(req: NextRequest) {
             guestName: clientId ? null : (guestName || null),
             guestEmail: clientId ? null : (guestEmail || null),
             status: "paid",
-            total: pi.amount,
+            total: expectedTotal,
             amountPaid: pi.amount_received,
             stripePaymentIntentId: pi.id,
             shippingAddress: shippingAddress ?? null,

@@ -267,7 +267,6 @@ function ServiceModal({
     try {
       const payload: ServiceInput = {
         ...form,
-        price: Math.round(form.price * 100),
         tagline: form.tagline || null,
         forWho: form.forWho || null,
         shortDescription: form.shortDescription || null,

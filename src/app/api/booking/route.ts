@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
 import { createClient } from "@/lib/supabase/server"
+import { geocode, haversineKm, computeTravelFee, TravelPricing, DEFAULT_TRAVEL_PRICING } from "@/lib/geo"
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,15 +55,22 @@ export async function POST(req: NextRequest) {
     if (location === "domicile") {
       const profile = await prisma.profile.findFirst({
         where: { role: "specialist" },
-        select: { travelPricing: true },
+        select: { cabinetLat: true, cabinetLng: true, travelPricing: true },
       })
-      if (profile?.travelPricing) {
-        const pricing = profile.travelPricing as { type?: string; zones?: { maxKm: number; feeInCents: number }[] }
-        if (pricing.type === "zones" && Array.isArray(pricing.zones) && pricing.zones.length > 0) {
+      const pricing = (profile?.travelPricing as TravelPricing | null) ?? DEFAULT_TRAVEL_PRICING
+
+      if (profile?.cabinetLat && profile?.cabinetLng && clientAddress) {
+        const clientCoords = await geocode(clientAddress)
+        if (clientCoords) {
+          const distanceKm = haversineKm(profile.cabinetLat, profile.cabinetLng, clientCoords.lat, clientCoords.lng)
+          const fee = computeTravelFee(distanceKm, pricing)
+          // fee === null means out of zone — use first zone fee as fallback
+          travelFeeInCents = fee ?? (pricing.zones[0]?.feeInCents ?? 1800)
+        } else {
           travelFeeInCents = pricing.zones[0]?.feeInCents ?? 1800
         }
       } else {
-        travelFeeInCents = 1800
+        travelFeeInCents = pricing.zones[0]?.feeInCents ?? 1800
       }
     }
 

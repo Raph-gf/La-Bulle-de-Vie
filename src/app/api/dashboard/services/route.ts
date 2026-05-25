@@ -29,7 +29,7 @@ const serviceSchema = z.object({
   displayOrder: z.number().int().min(0).optional(),
   description: z.string().min(1).max(2000),
   durationMinutes: z.number().int().min(5).max(480),
-  price: z.number().int().min(100),
+  price: z.number().min(0.5),
   category: z.enum(["massage", "energetique", "creation"]),
   isPublished: z.boolean().optional(),
   imageUrls: z.array(z.string().url()).max(3).optional(),
@@ -61,10 +61,11 @@ export async function POST(req: Request) {
   const existing = await prisma.service.findUnique({ where: { slug: parsed.data.slug } })
   if (existing) return NextResponse.json({ error: "Ce slug est déjà utilisé" }, { status: 409 })
 
-  const { benefits, ...restData } = parsed.data
+  const { benefits, price, ...restData } = parsed.data
   const service = await prisma.service.create({
     data: {
       ...restData,
+      price: Math.round(price * 100),
       benefits: benefits === null || benefits === undefined ? Prisma.JsonNull : benefits,
       relatedSlugs: parsed.data.relatedSlugs ?? [],
       imageUrls: parsed.data.imageUrls ?? [],

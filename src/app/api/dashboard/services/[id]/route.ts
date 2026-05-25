@@ -26,7 +26,7 @@ const updateSchema = z.object({
   displayOrder: z.number().int().min(0).optional(),
   description: z.string().min(1).max(2000).optional(),
   durationMinutes: z.number().int().min(5).max(480).optional(),
-  price: z.number().int().min(100).optional(),
+  price: z.number().min(0.5).optional(),
   category: z.enum(["massage", "energetique", "creation"]).optional(),
   isPublished: z.boolean().optional(),
   imageUrls: z.array(z.string().url()).max(3).optional(),
@@ -48,11 +48,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const service = await prisma.service.findUnique({ where: { id } })
   if (!service) return NextResponse.json({ error: "Prestation introuvable" }, { status: 404 })
 
-  const { benefits, ...restData } = parsed.data
+  const { benefits, price, ...restData } = parsed.data
   const updated = await prisma.service.update({
     where: { id },
     data: {
       ...restData,
+      ...(price !== undefined ? { price: Math.round(price * 100) } : {}),
       ...(benefits !== undefined ? { benefits: benefits === null ? Prisma.JsonNull : benefits } : {}),
     },
   })
