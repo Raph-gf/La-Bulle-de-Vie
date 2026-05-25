@@ -119,6 +119,9 @@ export async function POST(req: NextRequest) {
               .catch(err => console.error("[email] confirmation failed:", err))
 
             const specialistEmail = process.env.SPECIALIST_EMAIL
+            if (!specialistEmail) {
+              console.warn("[webhook] SPECIALIST_EMAIL not set — specialist notification skipped")
+            }
             if (specialistEmail) {
               // Respect the specialist's onNewBooking notification preference
               const specialist = await prisma.profile.findFirst({

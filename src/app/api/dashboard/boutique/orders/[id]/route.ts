@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { requireSpecialist } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
-async function requireSpecialist() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } })
-  return profile?.role === "specialist" ? user : null
-}
 
 const statusSchema = z.object({
   status: z.enum(["pending", "paid", "shipped", "cancelled"]),

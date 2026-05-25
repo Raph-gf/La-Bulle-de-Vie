@@ -81,6 +81,9 @@ export async function POST(req: NextRequest) {
 
     // Notify specialist if they opted in — non-blocking
     const specialistEmail = process.env.SPECIALIST_EMAIL
+    if (!specialistEmail) {
+      console.warn("[reviews] SPECIALIST_EMAIL not set — specialist notification skipped")
+    }
     if (specialistEmail) {
       const specialist = await prisma.profile.findFirst({
         where: { role: "specialist" },

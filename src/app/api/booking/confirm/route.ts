@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
+import { createClient } from "@/lib/supabase/server"
 import { sendBookingConfirmation, sendSpecialistNotification } from "@/lib/resend/emails"
 import { createCalendarEvent, type GCalToken } from "@/lib/google-calendar"
 
@@ -52,6 +53,14 @@ export async function POST(req: NextRequest) {
     if (!slotId || !serviceId) {
       console.error("[booking/confirm] missing metadata — slotId:", slotId, "serviceId:", serviceId)
       return NextResponse.json({ error: "Métadonnées PaymentIntent manquantes" }, { status: 422 })
+    }
+
+    // M3: if caller is authenticated and PI has a clientId, they must match —
+    // prevents a logged-in user from confirming someone else's PaymentIntent
+    const supabase = await createClient()
+    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+    if (sessionUser && clientId && sessionUser.id !== clientId) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 })
     }
 
     // Verify amount received matches expected price from DB — prevents a PI created
@@ -149,6 +158,9 @@ export async function POST(req: NextRequest) {
 
       // Specialist notification email (non-blocking)
       const specialistEmail = process.env.SPECIALIST_EMAIL
+      if (!specialistEmail) {
+        console.warn("[booking/confirm] SPECIALIST_EMAIL not set — specialist notification skipped")
+      }
       if (specialistEmail) {
         const notifPrefs = (specialist?.notificationPrefs as Record<string, boolean> | null) ?? {}
         if (notifPrefs.onNewBooking !== false) {

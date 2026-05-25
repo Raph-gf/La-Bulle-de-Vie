@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { requireSpecialist } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
 
-async function requireSpecialist() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } })
-  return profile?.role === "specialist" ? user : null
-}
 
 export async function GET() {
   try {
@@ -31,7 +24,7 @@ export async function GET() {
     // ── Run all queries in parallel ──────────────────────────────────────────
     const PAID_STATUSES = ["confirmed", "completed"] as const
 
-    const [allTimeAgg, recentAppts, transactions, refunds, stripeBalance, stripePayouts] =
+    const [allTimeAgg, recentAppts, transactions, refunds, refundAgg, stripeBalance, stripePayouts] =
       await Promise.all([
 
         // All-time aggregate KPIs
@@ -77,11 +70,11 @@ export async function GET() {
           },
         }),
 
-        // Refunds
+        // Refunds list (last 50 for display)
         prisma.appointment.findMany({
           where: { refundStatus: { not: "none" } },
           orderBy: { updatedAt: "desc" },
-          take: 20,
+          take: 50,
           select: {
             id: true,
             amountPaid: true,
@@ -91,6 +84,12 @@ export async function GET() {
             service: { select: { name: true } },
             slot: { select: { date: true } },
           },
+        }),
+
+        // Refund aggregate — DB-level sum so totalRefundedCents is never sliced by the display limit
+        prisma.appointment.aggregate({
+          where: { refundStatus: "refunded" },
+          _sum: { amountPaid: true },
         }),
 
         // Stripe balance — null if API fails (test mode / not configured)
@@ -140,10 +139,8 @@ export async function GET() {
       .sort((a, b) => b.totalCents - a.totalCents)
       .slice(0, 5)
 
-    // ── Refunded total ───────────────────────────────────────────────────────
-    const totalRefundedCents = refunds
-      .filter((r) => r.refundStatus === "refunded")
-      .reduce((s, r) => s + (r.amountPaid ?? 0), 0)
+    // ── Refunded total (from DB aggregate, not sliced display list) ─────────
+    const totalRefundedCents = refundAgg._sum.amountPaid ?? 0
 
     // ── Stripe ───────────────────────────────────────────────────────────────
     const availableBalance =
