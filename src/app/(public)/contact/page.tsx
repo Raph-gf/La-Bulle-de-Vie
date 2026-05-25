@@ -1,5 +1,5 @@
 "use client"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -7,6 +7,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import Reveal from "@/components/animations/Reveal"
 import { contactSchema } from "@/lib/validation"
+import type { DayHours } from "@/app/api/opening-hours/route"
 
 type ContactFormValues = z.infer<typeof contactSchema>
 
@@ -17,18 +18,30 @@ const SUBJECTS = [
   { value: "autre",       ico: "❋", label: "Autre",        desc: "Carte cadeau, partenariat, presse…" },
 ] as const
 
-const HOURS = [
-  { day: "Lundi",    hours: "9h — 19h" },
-  { day: "Mardi",    hours: "9h — 19h" },
-  { day: "Mercredi", hours: "9h — 19h" },
-  { day: "Jeudi",    hours: "11h — 20h" },
-  { day: "Vendredi", hours: "9h — 18h" },
-  { day: "Samedi",   hours: "10h — 16h" },
-  { day: "Dimanche", hours: "Fermé" },
-]
+const DAY_LABELS: Record<string, string> = {
+  mon: "Lundi", tue: "Mardi", wed: "Mercredi", thu: "Jeudi",
+  fri: "Vendredi", sat: "Samedi", sun: "Dimanche",
+}
 
-// JS getDay() returns 0=Sun, 1=Mon … 6=Sat; map to our array index 0=Mon…6=Sun
+// "09:00" → "9h", "18:30" → "18h30"
+function fmtTime(t: string) {
+  const [h, m] = t.split(":").map(Number)
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`
+}
+
+// JS getDay(): 0=Sun…6=Sat → index in mon-first array
 const todayIdx = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1 })()
+
+// Shown while the real schedule is loading or if none is saved yet
+const fallbackHours: DayHours[] = [
+  { key: "mon", enabled: true,  start: "09:00", end: "19:00" },
+  { key: "tue", enabled: true,  start: "09:00", end: "19:00" },
+  { key: "wed", enabled: true,  start: "09:00", end: "19:00" },
+  { key: "thu", enabled: true,  start: "11:00", end: "20:00" },
+  { key: "fri", enabled: true,  start: "09:00", end: "18:00" },
+  { key: "sat", enabled: true,  start: "10:00", end: "16:00" },
+  { key: "sun", enabled: false, start: "09:00", end: "18:00" },
+]
 
 export default function ContactPage() {
   const [subject, setSubject] = useState<ContactFormValues["subject"]>("reservation")
@@ -38,6 +51,14 @@ export default function ContactPage() {
   const [msgLen, setMsgLen] = useState(0)
   const [fileName, setFileName] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [hours, setHours] = useState<DayHours[] | null>(null)
+
+  useEffect(() => {
+    fetch("/api/opening-hours")
+      .then(r => r.json())
+      .then(d => { if (d.hours) setHours(d.hours) })
+      .catch(() => {})
+  }, [])
 
   const {
     register,
@@ -125,19 +146,24 @@ export default function ContactPage() {
 
             <div className="ct-hours">
               <h4>Horaires d&apos;ouverture</h4>
-              {HOURS.map((h, i) => (
-                <div
-                  key={h.day}
-                  className={`ct-hour-row${i === todayIdx ? " today" : ""}`}
-                  style={h.hours === "Fermé" ? { opacity: 0.5 } : undefined}
-                >
-                  <span>
-                    {h.day}
-                    {i === todayIdx && <> · <strong>aujourd&apos;hui</strong></>}
-                  </span>
-                  <span>{h.hours}</span>
-                </div>
-              ))}
+              {(hours ?? fallbackHours).map((h, i) => {
+                const closed = !h.enabled
+                const label = DAY_LABELS[h.key] ?? h.key
+                const display = closed ? "Fermé" : `${fmtTime(h.start)} — ${fmtTime(h.end)}`
+                return (
+                  <div
+                    key={h.key}
+                    className={`ct-hour-row${i === todayIdx ? " today" : ""}`}
+                    style={closed ? { opacity: 0.5 } : undefined}
+                  >
+                    <span>
+                      {label}
+                      {i === todayIdx && <> · <strong>aujourd&apos;hui</strong></>}
+                    </span>
+                    <span>{display}</span>
+                  </div>
+                )
+              })}
             </div>
           </Reveal>
         </aside>
